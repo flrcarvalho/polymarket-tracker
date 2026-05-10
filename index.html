@@ -284,8 +284,9 @@ table.poly-tbl td input.col-res{font-weight:700}
         <div class="card-header">
           <span class="card-title" id="csv-count-label">0 apostas</span>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-primary" id="btnCopiar" onclick="copiarCSV()">⎘ Copiar</button>
-            <button class="btn" onclick="baixarCSV()">↓ Baixar .tsv</button>
+            <button class="btn btn-primary" id="btnCopiar" onclick="copiarCSV()">⎘ Copiar CSV</button>
+            <button class="btn" style="background:rgba(91,156,246,.15);border-color:var(--blue);color:var(--blue)" onclick="copiarCSVHeader()">⎘ Copiar TSV + header</button>
+            <button class="btn" onclick="baixarCSV()">↓ Baixar</button>
           </div>
         </div>
         <div class="card-body"><div class="csv-pre" id="csvPre">Nenhum dado. Gere o CSV no Dashboard primeiro.</div></div>
@@ -460,36 +461,66 @@ Decimal: , (vírgula)
 Data: DD/MM/AAAA
 Sem cabeçalho na saída
 1 aposta = 1 linha
-Ordem: mais antiga → mais recente`;
+Ordem: mais antiga → mais recente — OBRIGATÓRIO para todas as casas`;
 
 const PROMPTS = {
-  bet365: `MODO DE EXECUÇÃO: ESTRITO — sistema determinístico.
-NÃO interpretar. NÃO explicar. NÃO validar em texto. Apenas parsing + transformação + output CSV.
-OUTPUT VÁLIDO: APENAS linhas CSV, sem texto adicional, sem cabeçalho.
+  bet365: `EXTRATOR BET365 — Claude API 2026
 
-CASA: Bet365
+FUNÇÃO: Interpretar prints da Bet365 e converter cada aposta para o padrão global MASTER.
+OUTPUT VÁLIDO: APENAS linhas CSV separadas por ; — sem texto, sem explicações, sem cabeçalho, sem markdown.
+
 VALORES FIXOS: Casa=Bet365 | Tipster=vazio | Parceiro=vazio
-DATA: usar data do jogo se visível. Formato DD/MM/AAAA.
+
+⚠️ REGRA DE ORDEM — CRÍTICA:
+A Bet365 exibe bilhetes do mais recente para o mais antigo.
+A planilha exige ordem INVERSA: mais antigo → mais recente.
+PROCEDIMENTO OBRIGATÓRIO:
+1. Ler e identificar TODOS os bilhetes antes de gerar qualquer linha
+2. Numerar os bilhetes pela ordem de aparição (1 = mais recente, N = mais antigo)
+3. Gerar o CSV começando pelo bilhete N (mais antigo) até o bilhete 1 (mais recente)
+A ordem é baseada em POSIÇÃO NO PRINT — nunca em data ou horário.
+
+FORMATO: Separador=; | Decimal=vírgula | Sem cabeçalho
+Colunas: Data;Esporte;Tipster;Casa;Parceiro;Aposta;Descrição;Stake;Odd;Resultado
+
+DATA: usar data do jogo/evento se visível. Formato DD/MM/AAAA. Ignorar horário.
+
+STAKE: valor após "Aposta" ou "R$". Remover R$, remover ponto separador de milhar, manter vírgula decimal.
+
+ODD:
+- Odd exibida diretamente → usar
+- Múltipla sem odd total → multiplicar odds individuais
+- W com retorno visível → Odd = Retorno ÷ Stake (manter TODAS as casas decimais — nunca arredondar)
+
+CRIAR APOSTA (Bet Builder Bet365):
+- Todos os blocos "Criar Aposta" no mesmo bilhete = UMA única linha
+- Combinar seleções na descrição com //
+- Aposta = Múltipla
+- Bug de props duplicadas: mesmo jogador + mesmo fundamento + thresholds diferentes → manter apenas o MAIOR
 
 DETECÇÃO DE BILHETES:
-INÍCIO: linha contendo "R$XXX,XX Criar Aposta"
-FIM: linha contendo "Aposta | Retorno Total | Retorno Obtido"
-Todos os blocos CRIAR APOSTA no mesmo intervalo = 1 único bilhete → 1 linha CSV.
+- Início: linha com "R$XXX,XX Criar Aposta"
+- Fim: linha com "Aposta | Retorno Total | Retorno Obtido"
 
-ORDEM DE SAÍDA: mais antiga → mais recente (primeira imagem → última imagem; dentro da imagem: de cima para baixo).
+RESULTADO — ORDEM DE DECISÃO:
+1. VOID (prioridade máxima): Retorno=Stake e sem indicação explícita de vitória → V
+2. Ganhou→W | Perdida→L | Half Win / ½ Ganho→HW | Half Loss / ½ Perdido→HL | Void/Anulada/Cancelada→V
 
-DECISÃO DE RESULTADO:
-1. VOID (prioridade máxima): Retorno=Stake e sem indicação de vitória → V
-2. Ganhou→W | Perdida→L | Half Win→HW | Half Loss→HL | Anulada/Void→V
-ODD: V→odd do bilhete | W com retorno→Retorno/Stake | L sem cashout→odd do bilhete | L com cashout→Recebido/Stake | HW/HL→odd do bilhete
+ODD por resultado:
+- V → odd do bilhete (nunca 1,00, nunca recalcular)
+- W com retorno → Retorno ÷ Stake (precisão total)
+- L sem cashout → odd do bilhete (nunca 0)
+- L com cashout → Recebido ÷ Stake
+- HW / HL → odd do bilhete (nunca recalcular)
 
-${MASTER_DESCRICAO}
-${MASTER_RESULTADO}
-${MASTER_ESPORTES}
-${MASTER_APOSTAS}
-${MASTER_CSV}
+SISTEMAS (Trixie/Yankee/Super Yankee/Patent/Lucky 15/31/63):
+- W com retorno → Odd = Retorno ÷ Stake
+- L sem cashout → calcular odd estrutural conforme tipo do sistema
+- V → preservar odd estrutural
 
-SAÍDA FINAL: apenas CSV. Nenhum texto adicional.`,
+VALIDAÇÃO FINAL:
+- nº linhas = nº bilhetes detectados | separador ; | decimal , | ordem antiga→recente
+- Resultado válido: W/L/V/HW/HL | Odd coerente | Void não classificado como W`,
 
   betano: `MODO DE EXECUÇÃO: ESTRITO — sistema determinístico.
 NÃO interpretar. NÃO explicar. Apenas parsing + transformação + output CSV.
@@ -748,8 +779,8 @@ function buildExtUI(containerId, casa, inputMode, badgeClass, badgeLabel) {
         <div class="ext-output-header">
           <span class="card-title">Saída — editável antes de copiar</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-primary" onclick="copiarSaida('${containerId}')">⎘ CSV</button>
-            <button class="btn" style="background:rgba(91,156,246,.15);border-color:var(--blue);color:var(--blue)" onclick="copiarTSV('${containerId}')">⎘ TSV planilha</button>
+            <button class="btn btn-primary" onclick="copiarSaida('${containerId}')">⎘ Copiar CSV</button>
+            <button class="btn" style="background:rgba(91,156,246,.15);border-color:var(--blue);color:var(--blue)" onclick="copiarTSV('${containerId}')">⎘ Copiar TSV + header</button>
             <button class="btn" onclick="baixarSaida('${containerId}','${casa}')">↓ Baixar</button>
             <button class="btn" onclick="adicionarLinha('${containerId}')">+ Linha</button>
           </div>
@@ -892,6 +923,7 @@ function baixarSaida(containerId, casa) {
 }
 
 function copiarTSV(containerId) {
+  // TSV com cabeçalho — para colar em planilha nova
   const tbody = document.getElementById(`ext-tbody-${containerId}`);
   if (!tbody) return;
   const rows = Array.from(tbody.querySelectorAll('tr'));
@@ -901,7 +933,7 @@ function copiarTSV(containerId) {
   navigator.clipboard.writeText(tsv).then(() => {
     const area = document.getElementById(`output-tbl-wrap-${containerId}`)?.closest('.ext-output-area');
     if (!area) return;
-    const btn = Array.from(area.querySelectorAll('button')).find(b => b.textContent.includes('TSV planilha'));
+    const btn = Array.from(area.querySelectorAll('button')).find(b => b.textContent.includes('+ header'));
     if (btn) { const o=btn.textContent; btn.textContent='✓ Copiado!'; setTimeout(()=>btn.textContent=o,2000); }
   });
 }
@@ -917,12 +949,13 @@ function bulkFill(containerId, colIdx, inputId) {
 }
 
 function copiarSaida(containerId) {
+  // CSV sem cabeçalho — para colar em planilha existente
   const csv = getTableCSV(containerId);
   if (!csv) return;
   navigator.clipboard.writeText(csv).then(() => {
     const area = document.getElementById(`output-tbl-wrap-${containerId}`)?.closest('.ext-output-area');
     if (!area) return;
-    const btn = area.querySelector('.btn-primary');
+    const btn = Array.from(area.querySelectorAll('button')).find(b => b.textContent.includes('CSV'));
     if (btn) { const o=btn.textContent; btn.textContent='✓ Copiado!'; setTimeout(()=>btn.textContent=o,2000); }
   });
 }
@@ -1467,8 +1500,27 @@ function onPolyEdit(input){
 }
 
 function copiarCSV(){
-  const t=document.getElementById('csvPre').dataset.full||'';if(!t)return;
-  navigator.clipboard.writeText(t).then(()=>{const b=document.getElementById('btnCopiar');b.textContent='✓ Copiado!';setTimeout(()=>b.textContent='⎘ Copiar',2000);});
+  // Sem cabeçalho — para colar em planilha existente
+  const tbody=document.getElementById('poly-tbody');
+  if(!tbody)return;
+  const rows=Array.from(tbody.querySelectorAll('tr'));
+  const csv=rows.map(tr=>Array.from(tr.querySelectorAll('input')).map(i=>i.value).join(';')).join('\n');
+  if(!csv)return;
+  navigator.clipboard.writeText(csv).then(()=>{const b=document.getElementById('btnCopiar');b.textContent='✓ Copiado!';setTimeout(()=>b.textContent='⎘ Copiar CSV',2000);});
+}
+
+function copiarCSVHeader(){
+  // TSV com cabeçalho — para planilha nova
+  const tbody=document.getElementById('poly-tbody');
+  if(!tbody)return;
+  const rows=Array.from(tbody.querySelectorAll('tr'));
+  const header=COLS.join('\t');
+  const lines=rows.map(tr=>Array.from(tr.querySelectorAll('input')).map(i=>i.value).join('\t'));
+  const tsv=[header,...lines].join('\n');
+  navigator.clipboard.writeText(tsv).then(()=>{
+    const btns=document.querySelectorAll('#page-csv .card-header button');
+    btns.forEach(b=>{if(b.textContent.includes('+ header')){const o=b.textContent;b.textContent='✓ Copiado!';setTimeout(()=>b.textContent=o,2000);}});
+  });
 }
 function baixarCSV(){
   const t=document.getElementById('csvPre').dataset.full||'';if(!t)return;
