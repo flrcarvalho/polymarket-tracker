@@ -643,7 +643,7 @@ function buildSystemPrompt(casa, manualDate='') {
   return `${base}\n\n${dateNote}`;
 }
 
-
+async function runExtractor(casa, inputType, textVal, images, manualDate='') {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error('Configure sua Claude API Key na sidebar antes de extrair.');
 
