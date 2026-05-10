@@ -286,12 +286,30 @@ function fmtObj(d){return`${String(d.getDate()).padStart(2,'0')}/${String(d.getM
  * Encerradas → endDate  (= data de resolução do mercado = data da partida)
  * Ativas     → startDate (ainda não encerradas)
  */
+/*
+ * FUSO HORÁRIO
+ * A API retorna datas em UTC. O Polymarket opera em UTC, mas o usuário está no
+ * Brasil (UTC-3). Ao converter endDate de UTC para local, getDate() já retorna
+ * o dia correto no fuso do navegador. O problema era em strings ISO date-only
+ * ("2026-05-10") que o JS interpreta como UTC midnight, resultando em dia anterior
+ * no fuso negativo. Solução: parsear como noon local para strings date-only.
+ */
+function parseISODate(str){
+  // "2026-05-10" → local noon (evita problema de fuso em date-only)
+  // "2026-05-10T23:00:00Z" → UTC parse normal, getDate() já converte pra local
+  if(!str)return null;
+  if(typeof str==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(str)){
+    const[y,m,d]=str.split('-').map(Number);
+    return new Date(y,m-1,d,12,0,0); // noon local = seguro contra DST
+  }
+  return new Date(str);
+}
 function parseDateFromPos(pos,isClosed){
   const ts=isClosed
     ?(pos.endDate||pos.startDate||pos.createdAt||pos.timestamp)
     :(pos.startDate||pos.createdAt||pos.timestamp);
   if(!ts)return null;
-  if(typeof ts==='string'&&ts.includes('-'))return new Date(ts);
+  if(typeof ts==='string'&&ts.includes('-'))return parseISODate(ts);
   return new Date(parseInt(ts)*(String(ts).length<=10?1000:1));
 }
 function fmtDate(pos,isClosed=false){const d=parseDateFromPos(pos,isClosed);return d?fmtObj(d):'';}
@@ -361,39 +379,49 @@ function reconciliarRedeems(fechados, activity){
 async function buscarEndDatesAtivas(){
   if(!dadosAtivos.length)return;
   try{
-    const tokens=dadosAtivos.map(p=>p.asset).filter(Boolean);
-    if(!tokens.length)return;
-    // Gamma API: GET /markets?clob_token_ids=X&clob_token_ids=Y...
-    const params=tokens.map(t=>`clob_token_ids=${encodeURIComponent(t)}`).join('&');
-    const r=await fetch(`https://gamma-api.polymarket.com/markets?${params}&limit=100`);
-    if(!r.ok)return;
+    // Gamma API bloqueia CORS do GitHub Pages.
+    // Solução: buscar pelo slug de cada posição ativa via Gamma sem token_ids,
+    // ou usar o conditionId para chamar market by id na Gamma API via proxy indireto.
+    // Alternativa funcional: extrair endDate do campo startDate da posição ativa +
+    // buscar via /markets?condition_ids= na data-api (que aceita CORS).
+    const condIds=dadosAtivos.map(p=>p.conditionId).filter(Boolean);
+    if(!condIds.length)return;
+
+    // data-api aceita CORS e tem endpoint de markets por conditionId
+    const params=condIds.map(c=>`condition_ids=${encodeURIComponent(c)}`).join('&');
+    const r=await fetch(`https://data-api.polymarket.com/markets?${params}&limit=100`);
+    if(!r.ok){
+      console.warn('[Polymarket] data-api/markets não respondeu:',r.status);
+      return;
+    }
     const markets=await r.json();
     const map={};
     (Array.isArray(markets)?markets:[]).forEach(m=>{
-      const end=m.endDate||m.end_date||null;
+      const end=m.endDate||m.end_date||m.endDateIso||null;
       if(!end)return;
-      // clobTokenIds pode ser array de strings ou array de objects
+      if(m.conditionId)map[m.conditionId]=end;
+      // também mapear por asset/token
       const ids=m.clobTokenIds||m.clob_token_ids||[];
       ids.forEach(tid=>{
-        const key=typeof tid==='string'?tid:(tid?.token_id||tid?.id||null);
+        const key=typeof tid==='string'?tid:(tid?.token_id||null);
         if(key)map[key]=end;
       });
-      // fallback: também mapear pelo conditionId
-      if(m.conditionId)map[m.conditionId]=end;
     });
+
     dadosAtivos=dadosAtivos.map(p=>{
-      const endDate=map[p.asset]||map[p.conditionId]||null;
+      const endDate=map[p.conditionId]||map[p.asset]||null;
       return{...p,_eventEndDate:endDate};
     });
-    // debug: log no console para inspeção
-    console.log('[Polymarket] endDate map:',map);
-    console.log('[Polymarket] ativas com endDate:',dadosAtivos.map(p=>({title:p.title,asset:p.asset,_eventEndDate:p._eventEndDate})));
+
+    console.log('[Polymarket] endDate via data-api:',
+      dadosAtivos.map(p=>({title:(p.title||'').substring(0,40),_eventEndDate:p._eventEndDate}))
+    );
   }catch(e){console.warn('[Polymarket] buscarEndDatesAtivas error:',e);}
 }
 
 function eventDateBadge(endDateStr){
   if(!endDateStr)return'<span class="muted mono" style="font-size:10px">—</span>';
-  const ev=new Date(endDateStr);
+  const ev=parseISODate(endDateStr)||new Date(endDateStr);
   const now=new Date();
   const diffDays=Math.ceil((ev-now)/(1000*60*60*24));
   const dateStr=fmtObj(ev);
@@ -428,18 +456,9 @@ async function buscar(){
     dadosFechados=Array.isArray(fechados)?fechados:[];
     // Reconstruir posições ganhas resgatadas (REDEEM) que não aparecem em /closed
     dadosFechados=reconciliarRedeems(dadosFechados, Array.isArray(activity)?activity:[]);
-    // Remover "ativas zumbi": posições com currentValue=0 e já resolvidas
-    // Reconstruí-las como L em dadosFechados se ainda não estiverem lá
-    const closedCids=new Set(dadosFechados.map(p=>p.conditionId).filter(Boolean));
-    const zombies=dadosAtivos.filter(p=>parseFloat(p.currentValue||0)===0&&parseFloat(p.initialValue||0)>0);
-    zombies.forEach(p=>{
-      if(!closedCids.has(p.conditionId)){
-        dadosFechados.push({...p,cashPnl:-parseFloat(p.initialValue||0),endDate:p.startDate,_zombie:true});
-        closedCids.add(p.conditionId);
-        console.log('[Polymarket] Zumbi L reconstruído:',p.title);
-      }
-    });
-    dadosAtivos=dadosAtivos.filter(p=>parseFloat(p.currentValue||0)>0||parseFloat(p.initialValue||0)===0);
+    // NOTA: não inferimos L a partir de currentValue=0 — sem endDate confiável
+    // isso causaria falsos negativos em partidas futuras. Posições abertas
+    // com valor baixo permanecem como "ativa" até a API as mover para /closed.
     dolarHoje=await getDolarHoje();
     await buscarEndDatesAtivas();
     document.getElementById('lastUpdate').textContent='atualizado '+new Date().toLocaleTimeString('pt-BR');
@@ -570,7 +589,7 @@ async function gerarCSV(){
   for(const pos of ativasSorted){
     const id=makeId(pos,'__a');
     // data: prefere endDate do evento (data da partida)
-    const date=pos._eventEndDate?fmtObj(new Date(pos._eventEndDate)):fmtDate(pos,false);
+    const date=pos._eventEndDate?fmtObj(parseISODate(pos._eventEndDate)||new Date(pos._eventEndDate)):fmtDate(pos,false);
     // cotação do dia do evento, ou hoje como fallback
     let cotacao=date?await getCotacao(date):null;
     if(!cotacao&&dolarHoje)cotacao=dolarHoje.val;
