@@ -284,8 +284,7 @@ table.poly-tbl td input.col-res{font-weight:700}
         <div class="card-header">
           <span class="card-title" id="csv-count-label">0 apostas</span>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-primary" id="btnCopiar" onclick="copiarCSV()">⎘ Copiar CSV</button>
-            <button class="btn" style="background:rgba(91,156,246,.15);border-color:var(--blue);color:var(--blue)" onclick="copiarCSVHeader()">⎘ Copiar TSV + header</button>
+            <button class="btn btn-primary" id="btnCopiar" onclick="copiarCSV()">⎘ Copiar</button>
             <button class="btn" onclick="baixarCSV()">↓ Baixar</button>
           </div>
         </div>
@@ -471,14 +470,19 @@ OUTPUT VÁLIDO: APENAS linhas CSV separadas por ; — sem texto, sem explicaçõ
 
 VALORES FIXOS: Casa=Bet365 | Tipster=vazio | Parceiro=vazio
 
-⚠️ REGRA DE ORDEM — CRÍTICA:
-A Bet365 exibe bilhetes do mais recente para o mais antigo.
-A planilha exige ordem INVERSA: mais antigo → mais recente.
-PROCEDIMENTO OBRIGATÓRIO:
-1. Ler e identificar TODOS os bilhetes antes de gerar qualquer linha
-2. Numerar os bilhetes pela ordem de aparição (1 = mais recente, N = mais antigo)
-3. Gerar o CSV começando pelo bilhete N (mais antigo) até o bilhete 1 (mais recente)
-A ordem é baseada em POSIÇÃO NO PRINT — nunca em data ou horário.
+⚠️⚠️ REGRA DE ORDEM — OBRIGATÓRIA — LER ANTES DE PROCESSAR QUALQUER COISA ⚠️⚠️
+A Bet365 mostra bilhetes do MAIS RECENTE (topo) para o MAIS ANTIGO (base).
+O CSV DEVE sair do MAIS ANTIGO (base) para o MAIS RECENTE (topo).
+Ou seja: o ÚLTIMO bilhete visível no print vira a PRIMEIRA linha do CSV.
+            o PENÚLTIMO bilhete vira a SEGUNDA linha. E assim por diante.
+            o PRIMEIRO bilhete visível no print vira a ÚLTIMA linha do CSV.
+
+ETAPAS OBRIGATÓRIAS:
+ETAPA 1 — Varrer todas as imagens e listar TODOS os bilhetes na ordem em que aparecem (1=mais recente/topo, N=mais antigo/base)
+ETAPA 2 — Inverter a lista: começar do bilhete N e terminar no bilhete 1
+ETAPA 3 — Gerar o CSV nessa ordem invertida
+
+NUNCA gerar o CSV na ordem em que os bilhetes aparecem nas imagens.
 
 FORMATO: Separador=; | Decimal=vírgula | Sem cabeçalho
 Colunas: Data;Esporte;Tipster;Casa;Parceiro;Aposta;Descrição;Stake;Odd;Resultado
@@ -519,7 +523,7 @@ SISTEMAS (Trixie/Yankee/Super Yankee/Patent/Lucky 15/31/63):
 - V → preservar odd estrutural
 
 VALIDAÇÃO FINAL:
-- nº linhas = nº bilhetes detectados | separador ; | decimal , | ordem antiga→recente
+- nº linhas = nº bilhetes detectados | separador ; | decimal , | ordem: última imagem/base → primeira imagem/topo
 - Resultado válido: W/L/V/HW/HL | Odd coerente | Void não classificado como W`,
 
   betano: `MODO DE EXECUÇÃO: ESTRITO — sistema determinístico.
@@ -668,28 +672,35 @@ function kbSet(key, val) { localStorage.setItem(KB_KEYS[key], val); }
 function kbClear(key) { localStorage.removeItem(KB_KEYS[key]); }
 
 function buildSystemPrompt(casa, manualDate='') {
-  // Try stored knowledge base first, fallback to hardcoded
-  const desc    = kbGet('master_descricao') || MASTER_DESCRICAO;
-  const res     = kbGet('master_resultado') || MASTER_RESULTADO;
-  const esp     = kbGet('master_esportes')  || MASTER_ESPORTES;
-  const apost   = kbGet('master_apostas')   || MASTER_APOSTAS;
-  const csv     = kbGet('master_csv')       || MASTER_CSV;
-  const instKey = 'inst_' + casa;
-  const instStored = kbGet(instKey);
-
   const today = new Date().toLocaleDateString('pt-BR');
   const dateNote = manualDate
     ? `DATA DE REFERÊNCIA FORNECIDA PELO USUÁRIO: ${manualDate} — usar esta data quando o bilhete não tiver data visível.`
     : `Data atual: ${today}`;
 
-  const globalMasters = `${desc}\n\n${res}\n\n${esp}\n\n${apost}\n\n${csv}`;
+  const instStored   = kbGet('inst_' + casa);
+  const descStored   = kbGet('master_descricao');
+  const resStored    = kbGet('master_resultado');
+  const espStored    = kbGet('master_esportes');
+  const apostStored  = kbGet('master_apostas');
+  const csvStored    = kbGet('master_csv');
 
-  if (instStored) {
-    // User has their own instruction for this casa
-    return `${instStored}\n\n${globalMasters}\n\n${dateNote}\n\nREGRA CRÍTICA DE SAÍDA:\n- Retornar APENAS linhas CSV separadas por ponto e vírgula\n- Sem texto adicional, sem cabeçalho, sem markdown, sem \`\`\`\n- Coluna Tipster SEMPRE vazia (3ª coluna)\n- 10 colunas por linha: Data;Esporte;;Casa;;Aposta;Descrição;Stake;Odd;Resultado\n- ORDEM OBRIGATÓRIA: mais antiga → mais recente`;
+  const hasBasesContent = instStored || descStored || resStored || espStored || apostStored || csvStored;
+
+  if (hasBasesContent) {
+    // Usar SOMENTE o que está nas Bases — sem nenhum hardcoded
+    const parts = [];
+    if (instStored)  parts.push(instStored);
+    if (descStored)  parts.push(descStored);
+    if (resStored)   parts.push(resStored);
+    if (espStored)   parts.push(espStored);
+    if (apostStored) parts.push(apostStored);
+    if (csvStored)   parts.push(csvStored);
+    parts.push(dateNote);
+    parts.push(`REGRA DE SAÍDA:\n- Retornar APENAS linhas CSV separadas por ponto e vírgula\n- Sem texto, sem cabeçalho, sem markdown, sem \`\`\`\n- 10 colunas: Data;Esporte;Tipster;Casa;Parceiro;Aposta;Descrição;Stake;Odd;Resultado`);
+    return parts.join('\n\n---\n\n');
   }
 
-  // Fallback to hardcoded PROMPTS
+  // Sem nada nas Bases: usar prompt hardcoded da casa
   const base = PROMPTS[casa] || PROMPTS['generic'];
   return `${base}\n\n${dateNote}`;
 }
@@ -780,7 +791,7 @@ function buildExtUI(containerId, casa, inputMode, badgeClass, badgeLabel) {
           <span class="card-title">Saída — editável antes de copiar</span>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-primary" onclick="copiarSaida('${containerId}')">⎘ Copiar CSV</button>
-            <button class="btn" style="background:rgba(91,156,246,.15);border-color:var(--blue);color:var(--blue)" onclick="copiarTSV('${containerId}')">⎘ Copiar TSV + header</button>
+            <button class="btn" style="background:rgba(91,156,246,.15);border-color:var(--blue);color:var(--blue)" onclick="copiarTSV('${containerId}')">⎘ Copiar TSV</button>
             <button class="btn" onclick="baixarSaida('${containerId}','${casa}')">↓ Baixar</button>
             <button class="btn" onclick="adicionarLinha('${containerId}')">+ Linha</button>
           </div>
@@ -909,31 +920,27 @@ function closePreview(containerId) {
 }
 
 function baixarSaida(containerId, casa) {
-  const el = document.getElementById(`output-${containerId}`);
-  const txt = el.textContent;
-  if (!txt || el.classList.contains('empty')) return;
-  const header = 'Data\tEsporte\tTipster\tCasa\tParceiro\tAposta\tDescrição\tStake\tOdd\tResultado';
-  // Convert ; to \t for TSV
-  const lines = txt.split('\n').map(l => l.split(';').join('\t'));
-  const tsv = [header, ...lines].join('\n');
+  const csv = getTableCSV(containerId);
+  if (!csv) return;
+  const header = COLS.join('\t');
+  const tsv = [header, ...csv.split('\n').map(l=>l.split(';').join('\t'))].join('\n');
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([tsv], {type:'text/tab-separated-values;charset=utf-8;'}));
+  a.href = URL.createObjectURL(new Blob([tsv],{type:'text/tab-separated-values;charset=utf-8;'}));
   a.download = `${casa}_${new Date().toISOString().slice(0,10)}.tsv`;
   a.click();
 }
 
 function copiarTSV(containerId) {
-  // TSV com cabeçalho — para colar em planilha nova
+  // TSV sem cabeçalho — tabs como separador
   const tbody = document.getElementById(`ext-tbody-${containerId}`);
   if (!tbody) return;
   const rows = Array.from(tbody.querySelectorAll('tr'));
-  const header = COLS.join('\t');
-  const lines = rows.map(tr => Array.from(tr.querySelectorAll('input')).map(i => i.value).join('\t'));
-  const tsv = [header, ...lines].join('\n');
+  const tsv = rows.map(tr => Array.from(tr.querySelectorAll('input')).map(i => i.value).join('\t')).join('\n');
+  if (!tsv) return;
   navigator.clipboard.writeText(tsv).then(() => {
     const area = document.getElementById(`output-tbl-wrap-${containerId}`)?.closest('.ext-output-area');
     if (!area) return;
-    const btn = Array.from(area.querySelectorAll('button')).find(b => b.textContent.includes('+ header'));
+    const btn = Array.from(area.querySelectorAll('button')).find(b => b.textContent.includes('TSV'));
     if (btn) { const o=btn.textContent; btn.textContent='✓ Copiado!'; setTimeout(()=>btn.textContent=o,2000); }
   });
 }
@@ -1500,27 +1507,13 @@ function onPolyEdit(input){
 }
 
 function copiarCSV(){
-  // Sem cabeçalho — para colar em planilha existente
+  // CSV sem cabeçalho — para colar em planilha existente
   const tbody=document.getElementById('poly-tbody');
   if(!tbody)return;
   const rows=Array.from(tbody.querySelectorAll('tr'));
-  const csv=rows.map(tr=>Array.from(tr.querySelectorAll('input')).map(i=>i.value).join(';')).join('\n');
+  const csv=rows.map(tr=>Array.from(tr.querySelectorAll('input')).map(i=>i.value).join('\t')).join('\n');
   if(!csv)return;
-  navigator.clipboard.writeText(csv).then(()=>{const b=document.getElementById('btnCopiar');b.textContent='✓ Copiado!';setTimeout(()=>b.textContent='⎘ Copiar CSV',2000);});
-}
-
-function copiarCSVHeader(){
-  // TSV com cabeçalho — para planilha nova
-  const tbody=document.getElementById('poly-tbody');
-  if(!tbody)return;
-  const rows=Array.from(tbody.querySelectorAll('tr'));
-  const header=COLS.join('\t');
-  const lines=rows.map(tr=>Array.from(tr.querySelectorAll('input')).map(i=>i.value).join('\t'));
-  const tsv=[header,...lines].join('\n');
-  navigator.clipboard.writeText(tsv).then(()=>{
-    const btns=document.querySelectorAll('#page-csv .card-header button');
-    btns.forEach(b=>{if(b.textContent.includes('+ header')){const o=b.textContent;b.textContent='✓ Copiado!';setTimeout(()=>b.textContent=o,2000);}});
-  });
+  navigator.clipboard.writeText(csv).then(()=>{const b=document.getElementById('btnCopiar');b.textContent='✓ Copiado!';setTimeout(()=>b.textContent='⎘ Copiar',2000);});
 }
 function baixarCSV(){
   const t=document.getElementById('csvPre').dataset.full||'';if(!t)return;
