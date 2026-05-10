@@ -179,6 +179,14 @@ table.tbl tr:hover td{background:rgba(255,255,255,.02)}
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Sincronizar
     </button>
     <div class="last-update" id="lastUpdate">nunca sincronizado</div>
+    <div style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem">
+      <div class="wallet-label">Claude API Key</div>
+      <div style="position:relative">
+        <input class="wallet-input" id="apiKeyInput" type="password" placeholder="sk-ant-..." style="padding-right:28px"/>
+        <span onclick="toggleApiKeyVis()" style="position:absolute;right:7px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:11px;color:var(--text3);user-select:none" id="apiKeyEye">👁</span>
+      </div>
+      <div id="apiKeyStatus" style="font-size:9px;margin-top:3px;font-family:'IBM Plex Mono',monospace;color:var(--text3);text-align:center"></div>
+    </div>
   </div>
 </aside>
 
@@ -522,25 +530,62 @@ SAÍDA FINAL: apenas CSV. Nenhum texto adicional.`
 // ══════════════════════════════════════════════
 //  EXTRACTOR ENGINE
 // ══════════════════════════════════════════════
+const API_KEY_STORAGE = 'flrc_apikey_v1';
+
+function getApiKey() {
+  return localStorage.getItem(API_KEY_STORAGE) || '';
+}
+
+function toggleApiKeyVis() {
+  const inp = document.getElementById('apiKeyInput');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function initApiKey() {
+  const inp = document.getElementById('apiKeyInput');
+  const saved = getApiKey();
+  if (saved) { inp.value = saved; updateApiKeyStatus(saved); }
+  inp.addEventListener('input', () => {
+    const v = inp.value.trim();
+    localStorage.setItem(API_KEY_STORAGE, v);
+    updateApiKeyStatus(v);
+  });
+}
+
+function updateApiKeyStatus(v) {
+  const el = document.getElementById('apiKeyStatus');
+  if (!el) return;
+  if (!v) { el.textContent = 'sem chave'; el.style.color = 'var(--text3)'; }
+  else if (v.startsWith('sk-ant-')) { el.textContent = '✓ chave salva'; el.style.color = 'var(--green)'; }
+  else { el.textContent = '⚠ formato inválido'; el.style.color = 'var(--amber)'; }
+}
+
 async function runExtractor(casa, inputType, textVal, images) {
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error('Configure sua Claude API Key na sidebar antes de extrair.');
   const sysPrompt = PROMPTS[casa];
   let messages;
   if (inputType === 'text') {
     messages = [{ role: 'user', content: textVal }];
   } else {
-    const contentParts = images.map(b64 => ({
+    const contentParts = images.map(b64obj => ({
       type: 'image',
-      source: { type: 'base64', media_type: 'image/jpeg', data: b64 }
+      source: { type: 'base64', media_type: b64obj.mime || 'image/png', data: b64obj.data }
     }));
     contentParts.push({ type: 'text', text: 'Extrair bilhetes conforme instruções.' });
     messages = [{ role: 'user', content: contentParts }];
   }
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
+      max_tokens: 2000,
       system: sysPrompt,
       messages
     })
@@ -614,7 +659,7 @@ function buildInputPanel(containerId, tab) {
     return `
       <div class="ext-drop-zone" id="drop-${containerId}" onclick="document.getElementById('file-${containerId}').click()">
         <div class="ext-drop-icon">📎</div>
-        <div class="ext-drop-text"><strong>Clique ou arraste imagens</strong>PNG, JPG, WEBP</div>
+        <div class="ext-drop-text"><strong>Clique, arraste ou Ctrl+V</strong>PNG, JPG, WEBP — Cole prints direto aqui</div>
         <input type="file" class="ext-file-hidden" id="file-${containerId}" accept="image/*" multiple onchange="handleFiles('${containerId}',this.files)"/>
       </div>
       <div class="ext-thumb-grid" id="thumbs-${containerId}"></div>`;
@@ -643,13 +688,39 @@ function handleFiles(containerId, files) {
   const el = document.getElementById(containerId);
   if (!el._images) el._images = [];
   Array.from(files).forEach(f => {
+    const mime = f.type || 'image/png';
     const reader = new FileReader();
     reader.onload = ev => {
       const b64 = ev.target.result.split(',')[1];
-      el._images.push(b64);
-      addThumb(containerId, ev.target.result, el._images.length - 1);
+      const idx = el._images.length;
+      el._images.push({ data: b64, mime });
+      addThumb(containerId, ev.target.result, idx);
     };
     reader.readAsDataURL(f);
+  });
+}
+
+function enablePaste(containerId) {
+  // containerId examples: 'ext-bet365-ui', 'ext-superbet-ui', 'ext-generic-ui'
+  // page IDs: 'page-ext-bet365', 'page-ext-superbet', 'page-ext-generic'
+  const pageId = 'page-' + containerId.replace('-ui', '');
+  document.addEventListener('paste', ev => {
+    const page = document.getElementById(pageId);
+    if (!page || !page.classList.contains('active')) return;
+    const items = ev.clipboardData?.items;
+    if (!items) return;
+    const imageFiles = [];
+    for (const item of items) {
+      if (item.type.startsWith('image/')) imageFiles.push(item.getAsFile());
+    }
+    if (!imageFiles.length) return;
+    // switch to image tab if in 'both' mode and currently on text tab
+    const el = document.getElementById(containerId);
+    if (el && el._tab === 'text') {
+      const tabs = el.querySelectorAll('.ext-tab');
+      if (tabs.length >= 2) switchTab(containerId, 'image', tabs[1]);
+    }
+    handleFiles(containerId, imageFiles);
   });
 }
 
@@ -744,6 +815,10 @@ function initExtractors() {
   buildExtUI('ext-betfair-ui', 'betfair', 'text',  'badge-betfair', 'Betfair');
   buildExtUI('ext-superbet-ui','superbet','image', 'badge-superbet','Superbet');
   buildExtUI('ext-generic-ui', 'generic', 'both',  'badge-generic', 'Genérica');
+  // Enable Ctrl+V paste for image extractors
+  enablePaste('ext-bet365-ui');
+  enablePaste('ext-superbet-ui');
+  enablePaste('ext-generic-ui');
 }
 
 // ══════════════════════════════════════════════
@@ -1035,6 +1110,7 @@ async function limparERegerar(){
 const sw=localStorage.getItem(WALLET_KEY);
 if(sw){document.getElementById('walletInput').value=sw;setTimeout(buscar,500);}
 setInterval(()=>{const w=document.getElementById('walletInput').value.trim();if(w&&w.startsWith('0x'))buscar();},5*60*1000);
+initApiKey();
 initExtractors();
 </script>
 </body>
