@@ -91,16 +91,15 @@ table.tbl tr:hover td{background:rgba(255,255,255,.02)}
 @keyframes rot{to{transform:rotate(360deg)}}
 
 /* ── EXTRACTOR STYLES ── */
-.ext-wrap{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
-@media(max-width:900px){.ext-wrap{grid-template-columns:1fr}}
+.ext-wrap{display:flex;flex-direction:column;gap:1rem}
 .ext-input-area{background:var(--bg3);border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .ext-input-header{padding:.65rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .ext-input-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-family:'IBM Plex Mono',monospace}
-.ext-textarea{width:100%;min-height:260px;background:var(--bg4);border:none;outline:none;resize:vertical;padding:.85rem 1rem;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.65}
+.ext-textarea{width:100%;min-height:200px;background:var(--bg4);border:none;outline:none;resize:vertical;padding:.85rem 1rem;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.65}
 .ext-textarea::placeholder{color:var(--text3)}
-.ext-drop-zone{min-height:260px;background:var(--bg4);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;cursor:pointer;transition:background .15s;position:relative}
-.ext-drop-zone:hover,.ext-drop-zone.dragover{background:rgba(0,214,143,.05);border-color:var(--green)}
-.ext-drop-icon{font-size:32px;color:var(--text3)}
+.ext-drop-zone{min-height:180px;background:var(--bg4);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;cursor:pointer;transition:background .15s;position:relative}
+.ext-drop-zone:hover,.ext-drop-zone.dragover{background:rgba(0,214,143,.05)}
+.ext-drop-icon{font-size:28px;color:var(--text3)}
 .ext-drop-text{font-size:12px;color:var(--text3);font-family:'IBM Plex Mono',monospace;text-align:center}
 .ext-drop-text strong{color:var(--green);display:block;margin-bottom:3px;font-size:13px}
 .ext-file-hidden{display:none}
@@ -111,14 +110,14 @@ table.tbl tr:hover td{background:rgba(255,255,255,.02)}
 .ext-actions{padding:.65rem 1rem;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
 .ext-output-area{background:var(--bg3);border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .ext-output-header{padding:.65rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.ext-output-pre{min-height:260px;background:var(--bg4);padding:.85rem 1rem;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);line-height:1.7;white-space:pre-wrap;word-break:break-all;max-height:500px;overflow-y:auto}
-.ext-output-pre.empty{color:var(--text3);font-style:italic;display:flex;align-items:center;justify-content:center;min-height:260px}
+.ext-output-pre{min-height:120px;background:var(--bg4);padding:.85rem 1rem;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);line-height:1.7;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto}
+.ext-output-pre.empty{color:var(--text3);font-style:italic;display:flex;align-items:center;justify-content:center;min-height:120px}
 .ext-output-actions{padding:.65rem 1rem;border-top:1px solid var(--border);display:flex;gap:8px}
 .ext-status{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--text3)}
 .ext-status.running{color:var(--amber)}
 .ext-status.ok{color:var(--green)}
 .ext-status.err{color:var(--red)}
-.ext-casa-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;padding:3px 9px;border-radius:4px;margin-bottom:.85rem}
+.ext-casa-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;padding:3px 9px;border-radius:4px}
 .badge-bet365{background:rgba(255,200,0,.12);color:#f0c000}
 .badge-betano{background:rgba(255,80,80,.12);color:#f05050}
 .badge-betfair{background:rgba(0,120,255,.12);color:#3d8af7}
@@ -127,6 +126,25 @@ table.tbl tr:hover td{background:rgba(255,255,255,.02)}
 .ext-both-tabs{display:flex;gap:4px;margin-bottom:.75rem}
 .ext-tab{padding:4px 12px;border-radius:4px;font-size:11px;font-weight:600;font-family:'IBM Plex Mono',monospace;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text3);transition:all .12s}
 .ext-tab.active{background:var(--green-dim);color:var(--green);border-color:transparent}
+/* ── EDITABLE TABLE ── */
+.ext-tbl-wrap{overflow-x:auto;background:var(--bg4)}
+table.ext-tbl{width:100%;border-collapse:collapse;font-size:11px;font-family:'IBM Plex Mono',monospace;table-layout:fixed}
+table.ext-tbl th{padding:6px 8px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);border-bottom:1px solid var(--border2);background:var(--bg3);white-space:nowrap;overflow:hidden}
+table.ext-tbl td{padding:0;border-bottom:1px solid var(--border);vertical-align:middle}
+table.ext-tbl tr:last-child td{border-bottom:none}
+table.ext-tbl tr:hover td{background:rgba(255,255,255,.015)}
+table.ext-tbl td input{width:100%;background:transparent;border:none;outline:none;padding:6px 8px;color:var(--text2);font-family:'IBM Plex Mono',monospace;font-size:11px;min-width:0}
+table.ext-tbl td input:focus{background:rgba(0,214,143,.06);color:var(--text)}
+table.ext-tbl td input.col-res{color:var(--green);font-weight:700}
+table.ext-tbl td input.col-res[value="L"]{color:var(--red)}
+table.ext-tbl td input.col-res[value="V"]{color:var(--amber)}
+/* Polymarket table */
+table.poly-tbl{width:100%;border-collapse:collapse;font-size:11px;font-family:'IBM Plex Mono',monospace;table-layout:fixed}
+table.poly-tbl th{padding:7px 10px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap;background:var(--bg3)}
+table.poly-tbl td{padding:7px 10px;border-bottom:1px solid var(--border);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
+table.poly-tbl tr:last-child td{border-bottom:none}
+table.poly-tbl tr:hover td{background:rgba(255,255,255,.02)}
+
 </style>
 </head>
 <body>
@@ -726,13 +744,16 @@ function buildExtUI(containerId, casa, inputMode, badgeClass, badgeLabel) {
       </div>
       <div class="ext-output-area">
         <div class="ext-output-header">
-          <span class="card-title">Saída</span>
+          <span class="card-title">Saída — editável antes de copiar</span>
           <div style="display:flex;gap:6px">
-            <button class="btn btn-primary" onclick="copiarSaida('${containerId}')">⎘ Copiar</button>
+            <button class="btn btn-primary" onclick="copiarSaida('${containerId}')">⎘ Copiar CSV</button>
             <button class="btn" onclick="baixarSaida('${containerId}','${casa}')">↓ TSV</button>
+            <button class="btn" onclick="adicionarLinha('${containerId}')">+ Linha</button>
           </div>
         </div>
-        <div class="ext-output-pre empty" id="output-${containerId}">aguardando extração...</div>
+        <div id="output-tbl-wrap-${containerId}" class="ext-tbl-wrap">
+          <div class="ext-output-pre empty" id="output-${containerId}">aguardando extração...</div>
+        </div>
         <div class="ext-output-actions">
           <span class="muted mono" id="lines-${containerId}" style="font-size:10px"></span>
         </div>
@@ -868,6 +889,102 @@ function copiarSaida(containerId) {
     if (btn) { const orig=btn.textContent; btn.textContent='✓ Copiado!'; setTimeout(()=>btn.textContent=orig,2000); }
   });
 }
+const COLS = ['Data','Esporte','Tipster','Casa','Parceiro','Aposta','Descrição','Stake','Odd','Resultado'];
+const COL_WIDTHS = ['90px','80px','70px','80px','80px','100px','auto','70px','70px','80px'];
+
+function renderExtTable(containerId, lines) {
+  const wrap = document.getElementById(`output-tbl-wrap-${containerId}`);
+  if (!wrap) return;
+
+  // Parse CSV lines into rows
+  const rows = lines.map(l => l.split(';'));
+
+  const colDefs = COLS.map((c,i) => `<col style="width:${COL_WIDTHS[i]}">`).join('');
+  const thead = COLS.map((c,i) =>
+    `<th style="width:${COL_WIDTHS[i]}">${c}</th>`
+  ).join('');
+
+  const tbody = rows.map((row, ri) => {
+    const cells = COLS.map((_, ci) => {
+      const val = (row[ci] || '').trim();
+      const isRes = ci === 9;
+      const cls = isRes ? ' class="col-res"' : '';
+      return `<td><input${cls} value="${val.replace(/"/g,'&quot;')}" data-row="${ri}" data-col="${ci}" oninput="onCellEdit('${containerId}',this)"/></td>`;
+    }).join('');
+    return `<tr>${cells}</tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<table class="ext-tbl"><colgroup>${colDefs}</colgroup><thead><tr>${thead}</tr></thead><tbody id="ext-tbody-${containerId}">${tbody}</tbody></table>`;
+}
+
+function onCellEdit(containerId, input) {
+  // Update result cell color dynamically
+  if (parseInt(input.dataset.col) === 9) {
+    input.className = 'col-res';
+  }
+}
+
+function getTableCSV(containerId) {
+  const tbody = document.getElementById(`ext-tbody-${containerId}`);
+  if (!tbody) return '';
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  return rows.map(tr => {
+    const inputs = Array.from(tr.querySelectorAll('input'));
+    return inputs.map(i => i.value).join(';');
+  }).join('\n');
+}
+
+function adicionarLinha(containerId) {
+  const tbody = document.getElementById(`ext-tbody-${containerId}`);
+  if (!tbody) return;
+  const ri = tbody.querySelectorAll('tr').length;
+  const cells = COLS.map((_, ci) => {
+    const cls = ci===9?' class="col-res"':'';
+    return `<td><input${cls} value="" data-row="${ri}" data-col="${ci}" oninput="onCellEdit('${containerId}',this)"/></td>`;
+  }).join('');
+  const tr = document.createElement('tr');
+  tr.innerHTML = cells;
+  tbody.appendChild(tr);
+  tr.querySelector('input').focus();
+  const linesEl = document.getElementById(`lines-${containerId}`);
+  if (linesEl) linesEl.textContent = `${tbody.querySelectorAll('tr').length} linhas`;
+}
+
+function copiarSaida(containerId) {
+  const csv = getTableCSV(containerId);
+  if (!csv) return;
+  navigator.clipboard.writeText(csv).then(() => {
+    const btn = document.querySelector(`#output-tbl-wrap-${containerId}`)
+      ?.closest('.ext-output-area')?.querySelector('.btn-primary');
+    if (btn) { const o=btn.textContent; btn.textContent='✓ Copiado!'; setTimeout(()=>btn.textContent=o,2000); }
+  });
+}
+
+function baixarSaida(containerId, casa) {
+  const csv = getTableCSV(containerId);
+  if (!csv) return;
+  const header = COLS.join('\t');
+  const tsv = [header, ...csv.split('\n').map(l=>l.split(';').join('\t'))].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([tsv],{type:'text/tab-separated-values;charset=utf-8;'}));
+  a.download = `${casa}_${new Date().toISOString().slice(0,10)}.tsv`;
+  a.click();
+}
+
+function clearExtractor(containerId) {
+  const el = document.getElementById(containerId);
+  const ta = document.getElementById(`textarea-${containerId}`);
+  if (ta) ta.value = '';
+  if (el._images) el._images = [];
+  const thumbs = document.getElementById(`thumbs-${containerId}`);
+  if (thumbs) thumbs.innerHTML = '';
+  const wrap = document.getElementById(`output-tbl-wrap-${containerId}`);
+  if (wrap) wrap.innerHTML = `<div class="ext-output-pre empty" id="output-${containerId}" style="display:flex">aguardando extração...</div>`;
+  const status = document.getElementById(`status-${containerId}`);
+  if (status) { status.className='ext-status'; status.textContent=''; }
+  const lines = document.getElementById(`lines-${containerId}`);
+  if (lines) lines.textContent='';
+}
 function removeThumb(containerId, idx) {
   const el = document.getElementById(containerId);
   if (el._images) el._images.splice(idx, 1);
@@ -879,7 +996,6 @@ async function extract(containerId, casa) {
   const el = document.getElementById(containerId);
   const tab = el._tab || 'text';
   const statusEl = document.getElementById(`status-${containerId}`);
-  const outputEl = document.getElementById(`output-${containerId}`);
   const linesEl = document.getElementById(`lines-${containerId}`);
 
   let textVal = '';
@@ -896,8 +1012,9 @@ async function extract(containerId, casa) {
 
   statusEl.className = 'ext-status running';
   statusEl.textContent = '⟳ extraindo...';
-  outputEl.className = 'ext-output-pre empty';
-  outputEl.textContent = 'processando...';
+  // Show processing state in wrap
+  const tblWrap = document.getElementById(`output-tbl-wrap-${containerId}`);
+  if (tblWrap) tblWrap.innerHTML = `<div class="ext-output-pre empty" style="display:flex">processando...</div>`;
 
   try {
     const dateInput = document.getElementById(`date-${containerId}`);
@@ -910,33 +1027,23 @@ async function extract(containerId, casa) {
       if (t.startsWith('```') || t.startsWith('#')) return false;
       return t.split(';').length >= 9;
     });
-    outputEl.className = lines.length ? 'ext-output-pre' : 'ext-output-pre empty';
-    outputEl.textContent = lines.length ? lines.join('\n') : 'Nenhuma linha CSV válida extraída.';
+
+    if (lines.length) {
+      renderExtTable(containerId, lines);
+    } else {
+      if (tblWrap) tblWrap.innerHTML = `<div class="ext-output-pre empty" style="display:flex">Nenhuma linha CSV válida extraída.</div>`;
+    }
+
     statusEl.className = lines.length ? 'ext-status ok' : 'ext-status err';
     statusEl.textContent = lines.length ? `✓ ${lines.length} linha${lines.length!==1?'s':''}` : '⚠ sem linhas válidas';
     linesEl.textContent = lines.length ? `${lines.length} aposta${lines.length!==1?'s':''} extraída${lines.length!==1?'s':''}` : '';
   } catch (e) {
-    outputEl.className = 'ext-output-pre empty';
-    outputEl.textContent = 'Erro: ' + e.message;
+    if (tblWrap) tblWrap.innerHTML = `<div class="ext-output-pre empty" style="display:flex">Erro: ${e.message}</div>`;
     statusEl.className = 'ext-status err';
-    statusEl.textContent = '✗ erro';
+    statusEl.textContent = '✗ ' + e.message.substring(0,60);
   }
 }
 
-function clearExtractor(containerId) {
-  const el = document.getElementById(containerId);
-  const ta = document.getElementById(`textarea-${containerId}`);
-  if (ta) ta.value = '';
-  if (el._images) el._images = [];
-  const thumbs = document.getElementById(`thumbs-${containerId}`);
-  if (thumbs) thumbs.innerHTML = '';
-  const out = document.getElementById(`output-${containerId}`);
-  if (out) { out.className = 'ext-output-pre empty'; out.textContent = 'aguardando extração...'; }
-  const status = document.getElementById(`status-${containerId}`);
-  if (status) { status.className = 'ext-status'; status.textContent = ''; }
-  const lines = document.getElementById(`lines-${containerId}`);
-  if (lines) lines.textContent = '';
-}
 
 // ══════════════════════════════════════════════
 //  KNOWLEDGE BASE UI
@@ -1280,12 +1387,56 @@ function renderHistorico(){
 
 function renderCSVPage(){
   const hist=JSON.parse(localStorage.getItem(HIST_KEY)||'{"ids":[],"linhas":[]}');
-  const T='\t';const header=['Data','Esporte','Tipster','Casa','Parceiro','Aposta','Descrição','Stake','Odd','Resultado'].join(T);
-  const full=hist.linhas.length?[header,...hist.linhas].join('\n'):'';
   const el=document.getElementById('csvPre');
-  el.textContent=full||'Nenhum dado. Gere o CSV no Dashboard primeiro.';
-  el.dataset.full=full;
   document.getElementById('csv-count-label').textContent=hist.linhas.length?hist.linhas.length+' apostas — MASTER 2026':'0 apostas';
+
+  if(!hist.linhas.length){
+    el.innerHTML='<div class="empty-state">Nenhum dado. Gere o CSV no Dashboard primeiro.</div>';
+    el.dataset.full='';
+    return;
+  }
+
+  // Store raw TSV for download
+  const T='\t';
+  const header=COLS.join(T);
+  el.dataset.full=[header,...hist.linhas].join('\n');
+
+  // Render editable table
+  const colW=['90px','80px','70px','90px','90px','90px','auto','75px','75px','75px'];
+  const colDefs=COLS.map((_,i)=>`<col style="width:${colW[i]}">`).join('');
+  const thead=COLS.map(c=>`<th>${c}</th>`).join('');
+  const tbody=hist.linhas.map((ln,ri)=>{
+    const row=ln.split(T);
+    const cells=COLS.map((_,ci)=>{
+      const v=(row[ci]||'').trim();
+      const res=ci===9;
+      const cls=res?' class="col-res"':'';
+      let color='';
+      if(res){if(v==='W')color='color:var(--green)';else if(v==='L')color='color:var(--red)';else if(v==='V')color='color:var(--amber)';}
+      return `<td><input${cls} value="${v.replace(/"/g,'&quot;')}" style="${color}" data-row="${ri}" data-col="${ci}" oninput="onPolyEdit(this)"/></td>`;
+    }).join('');
+    return `<tr>${cells}</tr>`;
+  }).join('');
+
+  el.innerHTML=`<div style="overflow-x:auto"><table class="poly-tbl"><colgroup>${colDefs}</colgroup><thead><tr>${thead}</tr></thead><tbody id="poly-tbody">${tbody}</tbody></table></div>`;
+}
+
+function onPolyEdit(input){
+  if(parseInt(input.dataset.col)===9){
+    const v=input.value.toUpperCase();
+    if(v==='W')input.style.color='var(--green)';
+    else if(v==='L')input.style.color='var(--red)';
+    else if(v==='V')input.style.color='var(--amber)';
+    else input.style.color='';
+  }
+  // Rebuild full TSV
+  const tbody=document.getElementById('poly-tbody');
+  if(!tbody)return;
+  const rows=Array.from(tbody.querySelectorAll('tr'));
+  const T='\t';
+  const header=COLS.join(T);
+  const lines=rows.map(tr=>Array.from(tr.querySelectorAll('input')).map(i=>i.value).join(T));
+  document.getElementById('csvPre').dataset.full=[header,...lines].join('\n');
 }
 
 function copiarCSV(){
