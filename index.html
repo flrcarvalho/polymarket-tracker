@@ -80,7 +80,7 @@ table.tbl tr:hover td{background:rgba(255,255,255,.02)}
 .btn-primary:hover{opacity:.85}
 .btn-danger{border-color:rgba(240,80,110,.3);color:var(--red)}
 .btn-danger:hover{border-color:var(--red);background:var(--red-dim)}
-.csv-pre{background:var(--bg4);border:1px solid var(--border);border-radius:6px;padding:.75rem 1rem;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);line-height:1.7;max-height:420px;overflow-y:auto;overflow-x:auto;white-space:pre}
+.csv-pre{background:var(--bg4);border:1px solid var(--border);border-radius:6px;padding:.75rem 1rem;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text2);line-height:1.7;max-height:420px;overflow-y:auto;overflow-x:auto;white-space:pre;tab-size:4}
 .guide-step{display:flex;gap:12px;margin-bottom:1rem;align-items:flex-start}
 .guide-n{width:22px;height:22px;border-radius:50%;background:var(--green-dim);color:var(--green);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'IBM Plex Mono',monospace}
 .guide-text{font-size:13px;line-height:1.6}
@@ -168,6 +168,9 @@ table.tbl tr:hover td{background:rgba(255,255,255,.02)}
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>Genérica
     </div>
     <div class="nav-group">Ajuda</div>
+    <div class="nav-item" onclick="showPage('bases',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Bases
+    </div>
     <div class="nav-item" onclick="showPage('guia',this)">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Guia
     </div>
@@ -307,6 +310,39 @@ table.tbl tr:hover td{background:rgba(255,255,255,.02)}
         <div><div class="page-title">Extrator Genérico</div><div class="page-sub">qualquer casa — texto ou imagem · saída CSV MASTER 2026</div></div>
       </div>
       <div id="ext-generic-ui"></div>
+    </div>
+
+    <!-- BASE DE CONHECIMENTO -->
+    <div class="page" id="page-bases">
+      <div class="page-header">
+        <div><div class="page-title">Bases de Conhecimento</div><div class="page-sub">cole ou edite as instruções — os extratores usam estas bases automaticamente</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="kbSaveAll()">💾 Salvar tudo</button>
+          <button class="btn btn-danger" onclick="kbClearAll()">Limpar tudo</button>
+        </div>
+      </div>
+      <div style="display:grid;gap:1rem">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Bases Globais (MASTER)</span><span class="muted mono" style="font-size:9px">usadas por todos os extratores</span></div>
+          <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+            <div id="kb-field-master_descricao"></div>
+            <div id="kb-field-master_resultado"></div>
+            <div id="kb-field-master_esportes"></div>
+            <div id="kb-field-master_apostas"></div>
+            <div id="kb-field-master_csv" style="grid-column:1/-1"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Instruções por Casa</span><span class="muted mono" style="font-size:9px">se preenchido, substitui o prompt padrão da casa</span></div>
+          <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+            <div id="kb-field-inst_bet365"></div>
+            <div id="kb-field-inst_betano"></div>
+            <div id="kb-field-inst_betfair"></div>
+            <div id="kb-field-inst_superbet"></div>
+            <div id="kb-field-inst_generic" style="grid-column:1/-1"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- GUIA -->
@@ -560,19 +596,73 @@ function updateApiKeyStatus(v) {
   else { el.textContent = '⚠ formato inválido'; el.style.color = 'var(--amber)'; }
 }
 
-async function runExtractor(casa, inputType, textVal, images) {
+// ══════════════════════════════════════════════
+//  KNOWLEDGE BASE — localStorage keys
+// ══════════════════════════════════════════════
+const KB_KEYS = {
+  master_descricao: 'kb_master_descricao',
+  master_resultado: 'kb_master_resultado',
+  master_esportes:  'kb_master_esportes',
+  master_apostas:   'kb_master_apostas',
+  master_csv:       'kb_master_csv',
+  inst_bet365:      'kb_inst_bet365',
+  inst_betano:      'kb_inst_betano',
+  inst_betfair:     'kb_inst_betfair',
+  inst_superbet:    'kb_inst_superbet',
+  inst_generic:     'kb_inst_generic',
+};
+
+function kbGet(key) { return localStorage.getItem(KB_KEYS[key]) || ''; }
+function kbSet(key, val) { localStorage.setItem(KB_KEYS[key], val); }
+function kbClear(key) { localStorage.removeItem(KB_KEYS[key]); }
+
+function buildSystemPrompt(casa, manualDate='') {
+  // Try stored knowledge base first, fallback to hardcoded
+  const desc    = kbGet('master_descricao') || MASTER_DESCRICAO;
+  const res     = kbGet('master_resultado') || MASTER_RESULTADO;
+  const esp     = kbGet('master_esportes')  || MASTER_ESPORTES;
+  const apost   = kbGet('master_apostas')   || MASTER_APOSTAS;
+  const csv     = kbGet('master_csv')       || MASTER_CSV;
+  const instKey = 'inst_' + casa;
+  const instStored = kbGet(instKey);
+
+  const today = new Date().toLocaleDateString('pt-BR');
+  const dateNote = manualDate
+    ? `DATA DE REFERÊNCIA FORNECIDA PELO USUÁRIO: ${manualDate} — usar esta data quando o bilhete não tiver data visível.`
+    : `Data atual: ${today}`;
+
+  const globalMasters = `${desc}\n\n${res}\n\n${esp}\n\n${apost}\n\n${csv}`;
+
+  if (instStored) {
+    // User has their own instruction for this casa
+    return `${instStored}\n\n${globalMasters}\n\n${dateNote}\n\nREGRA CRÍTICA DE SAÍDA:\n- Retornar APENAS linhas CSV separadas por ponto e vírgula\n- Sem texto adicional, sem cabeçalho, sem markdown, sem \`\`\`\n- Coluna Tipster SEMPRE vazia (3ª coluna)\n- 10 colunas por linha: Data;Esporte;;Casa;;Aposta;Descrição;Stake;Odd;Resultado`;
+  }
+
+  // Fallback to hardcoded PROMPTS
+  const base = PROMPTS[casa] || PROMPTS['generic'];
+  return `${base}\n\n${dateNote}`;
+}
+
+
   const apiKey = getApiKey();
   if (!apiKey) throw new Error('Configure sua Claude API Key na sidebar antes de extrair.');
-  const sysPrompt = PROMPTS[casa];
+
+  // Build system prompt from knowledge base (stored) or fallback to hardcoded
+  const sysPrompt = buildSystemPrompt(casa, manualDate);
+
+  const userText = inputType === 'text'
+    ? (manualDate ? `DATA DE REFERÊNCIA: ${manualDate}\n\n${textVal}` : textVal)
+    : (manualDate ? `DATA DE REFERÊNCIA: ${manualDate}\n\nExtrair bilhetes conforme instruções.` : 'Extrair bilhetes conforme instruções.');
+
   let messages;
   if (inputType === 'text') {
-    messages = [{ role: 'user', content: textVal }];
+    messages = [{ role: 'user', content: userText }];
   } else {
     const contentParts = images.map(b64obj => ({
       type: 'image',
       source: { type: 'base64', media_type: b64obj.mime || 'image/png', data: b64obj.data }
     }));
-    contentParts.push({ type: 'text', text: 'Extrair bilhetes conforme instruções.' });
+    contentParts.push({ type: 'text', text: userText });
     messages = [{ role: 'user', content: contentParts }];
   }
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -599,7 +689,6 @@ async function runExtractor(casa, inputType, textVal, images) {
 //  BUILD EXTRACTOR UI
 // ══════════════════════════════════════════════
 function buildExtUI(containerId, casa, inputMode, badgeClass, badgeLabel) {
-  // inputMode: 'text' | 'image' | 'both'
   const el = document.getElementById(containerId);
   if (!el) return;
 
@@ -607,8 +696,14 @@ function buildExtUI(containerId, casa, inputMode, badgeClass, badgeLabel) {
   let currentTab = inputMode === 'image' ? 'image' : 'text';
 
   el.innerHTML = `
-    <div style="margin-bottom:.25rem">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem;flex-wrap:wrap">
       <span class="ext-casa-badge ${badgeClass}">${badgeLabel}</span>
+      <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+        <label style="font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace;white-space:nowrap">Data (DD/MM/AAAA)</label>
+        <input id="date-${containerId}" type="text" placeholder="ex: 09/05/2026"
+          style="background:var(--bg4);border:1px solid var(--border2);border-radius:4px;padding:4px 8px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;outline:none;width:120px"/>
+        <span style="font-size:9px;color:var(--text3);font-family:'IBM Plex Mono',monospace">opcional — usada se o bilhete não tiver data</span>
+      </div>
     </div>
     ${showTabs ? `
     <div class="ext-both-tabs">
@@ -625,17 +720,16 @@ function buildExtUI(containerId, casa, inputMode, badgeClass, badgeLabel) {
           ${buildInputPanel(containerId, currentTab)}
         </div>
         <div class="ext-actions">
-          <button class="btn btn-primary" onclick="extract('${containerId}','${casa}')">
-            ⚡ Extrair CSV
-          </button>
+          <button class="btn btn-primary" onclick="extract('${containerId}','${casa}')">⚡ Extrair</button>
           <button class="btn" onclick="clearExtractor('${containerId}')">Limpar</button>
         </div>
       </div>
       <div class="ext-output-area">
         <div class="ext-output-header">
-          <span class="card-title">Saída CSV</span>
+          <span class="card-title">Saída</span>
           <div style="display:flex;gap:6px">
             <button class="btn btn-primary" onclick="copiarSaida('${containerId}')">⎘ Copiar</button>
+            <button class="btn" onclick="baixarSaida('${containerId}','${casa}')">↓ TSV</button>
           </div>
         </div>
         <div class="ext-output-pre empty" id="output-${containerId}">aguardando extração...</div>
@@ -643,9 +737,12 @@ function buildExtUI(containerId, casa, inputMode, badgeClass, badgeLabel) {
           <span class="muted mono" id="lines-${containerId}" style="font-size:10px"></span>
         </div>
       </div>
+    </div>
+    <div id="img-preview-overlay-${containerId}" onclick="closePreview('${containerId}')"
+      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out">
+      <img id="img-preview-img-${containerId}" style="max-width:90vw;max-height:90vh;border-radius:6px;box-shadow:0 0 40px rgba(0,0,0,.8)"/>
     </div>`;
 
-  // store state
   el._tab = currentTab;
   el._inputMode = inputMode;
   el._images = [];
@@ -730,10 +827,47 @@ function addThumb(containerId, src, idx) {
   const div = document.createElement('div');
   div.className = 'ext-thumb';
   div.id = `thumb-${containerId}-${idx}`;
-  div.innerHTML = `<img src="${src}"/><div class="ext-thumb-rm" onclick="removeThumb('${containerId}',${idx})">×</div>`;
+  div.innerHTML = `<img src="${src}" onclick="openPreview('${containerId}','${src}')" style="cursor:zoom-in" title="Clique para ampliar"/>
+    <div class="ext-thumb-rm" onclick="removeThumb('${containerId}',${idx})">×</div>`;
   grid.appendChild(div);
 }
 
+function openPreview(containerId, src) {
+  const overlay = document.getElementById(`img-preview-overlay-${containerId}`);
+  const img = document.getElementById(`img-preview-img-${containerId}`);
+  if (!overlay || !img) return;
+  img.src = src;
+  overlay.style.display = 'flex';
+}
+
+function closePreview(containerId) {
+  const overlay = document.getElementById(`img-preview-overlay-${containerId}`);
+  if (overlay) overlay.style.display = 'none';
+}
+
+function baixarSaida(containerId, casa) {
+  const el = document.getElementById(`output-${containerId}`);
+  const txt = el.textContent;
+  if (!txt || el.classList.contains('empty')) return;
+  const header = 'Data\tEsporte\tTipster\tCasa\tParceiro\tAposta\tDescrição\tStake\tOdd\tResultado';
+  // Convert ; to \t for TSV
+  const lines = txt.split('\n').map(l => l.split(';').join('\t'));
+  const tsv = [header, ...lines].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([tsv], {type:'text/tab-separated-values;charset=utf-8;'}));
+  a.download = `${casa}_${new Date().toISOString().slice(0,10)}.tsv`;
+  a.click();
+}
+
+function copiarSaida(containerId) {
+  const el = document.getElementById(`output-${containerId}`);
+  const txt = el.textContent;
+  if (!txt || el.classList.contains('empty')) return;
+  navigator.clipboard.writeText(txt).then(() => {
+    const btn = el.closest('.ext-output-area').querySelector('.btn-primary');
+    if (btn) { const orig=btn.textContent; btn.textContent='✓ Copiado!'; setTimeout(()=>btn.textContent=orig,2000); }
+  });
+}
 function removeThumb(containerId, idx) {
   const el = document.getElementById(containerId);
   if (el._images) el._images.splice(idx, 1);
@@ -766,29 +900,27 @@ async function extract(containerId, casa) {
   outputEl.textContent = 'processando...';
 
   try {
-    const csv = await runExtractor(casa, tab, textVal, images);
-    const lines = csv.trim().split('\n').filter(l => l.trim().length > 0);
-    outputEl.className = 'ext-output-pre';
-    outputEl.textContent = lines.join('\n');
-    statusEl.className = 'ext-status ok';
-    statusEl.textContent = `✓ ${lines.length} linha${lines.length !== 1 ? 's' : ''}`;
-    linesEl.textContent = `${lines.length} aposta${lines.length !== 1 ? 's' : ''} extraída${lines.length !== 1 ? 's' : ''}`;
+    const dateInput = document.getElementById(`date-${containerId}`);
+    const manualDate = dateInput ? dateInput.value.trim() : '';
+    const raw = await runExtractor(casa, tab, textVal, images, manualDate);
+    const stripped = raw.replace(/^```[a-z]*\n?/im,'').replace(/\n?```\s*$/m,'').trim();
+    const lines = stripped.split('\n').filter(l => {
+      const t = l.trim();
+      if (!t) return false;
+      if (t.startsWith('```') || t.startsWith('#')) return false;
+      return t.split(';').length >= 9;
+    });
+    outputEl.className = lines.length ? 'ext-output-pre' : 'ext-output-pre empty';
+    outputEl.textContent = lines.length ? lines.join('\n') : 'Nenhuma linha CSV válida extraída.';
+    statusEl.className = lines.length ? 'ext-status ok' : 'ext-status err';
+    statusEl.textContent = lines.length ? `✓ ${lines.length} linha${lines.length!==1?'s':''}` : '⚠ sem linhas válidas';
+    linesEl.textContent = lines.length ? `${lines.length} aposta${lines.length!==1?'s':''} extraída${lines.length!==1?'s':''}` : '';
   } catch (e) {
     outputEl.className = 'ext-output-pre empty';
     outputEl.textContent = 'Erro: ' + e.message;
     statusEl.className = 'ext-status err';
     statusEl.textContent = '✗ erro';
   }
-}
-
-function copiarSaida(containerId) {
-  const el = document.getElementById(`output-${containerId}`);
-  const txt = el.textContent;
-  if (!txt || el.classList.contains('empty')) return;
-  navigator.clipboard.writeText(txt).then(() => {
-    const btn = el.closest('.ext-output-area').querySelector('.btn-primary');
-    if (btn) { btn.textContent = '✓ Copiado!'; setTimeout(() => btn.textContent = '⎘ Copiar', 2000); }
-  });
 }
 
 function clearExtractor(containerId) {
@@ -804,6 +936,69 @@ function clearExtractor(containerId) {
   if (status) { status.className = 'ext-status'; status.textContent = ''; }
   const lines = document.getElementById(`lines-${containerId}`);
   if (lines) lines.textContent = '';
+}
+
+// ══════════════════════════════════════════════
+//  KNOWLEDGE BASE UI
+// ══════════════════════════════════════════════
+const KB_LABELS = {
+  master_descricao: 'MASTER_DESCRICAO — Padrão de Descrição',
+  master_resultado: 'MASTER_RESULTADO — Regras de Resultado e Odd',
+  master_esportes:  'MASTER_ESPORTES — Normalização de Esportes',
+  master_apostas:   'MASTER_APOSTAS — Categorias de Apostas',
+  master_csv:       'MASTER_CSV — Estrutura do CSV',
+  inst_bet365:      'Instruções Bet365',
+  inst_betano:      'Instruções Betano',
+  inst_betfair:     'Instruções Betfair',
+  inst_superbet:    'Instruções Superbet',
+  inst_generic:     'Instruções Genérica',
+};
+
+function initKbPage() {
+  Object.keys(KB_LABELS).forEach(key => {
+    const container = document.getElementById(`kb-field-${key}`);
+    if (!container) return;
+    const saved = kbGet(key);
+    const statusColor = saved ? 'var(--green)' : 'var(--text3)';
+    const statusText = saved ? `✓ ${saved.length} chars salvos` : 'usando padrão interno';
+    container.innerHTML = `
+      <div style="margin-bottom:.35rem;display:flex;align-items:center;justify-content:space-between">
+        <label style="font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">${KB_LABELS[key]}</label>
+        <span id="kb-status-${key}" style="font-size:9px;font-family:'IBM Plex Mono',monospace;color:${statusColor}">${statusText}</span>
+      </div>
+      <textarea id="kb-ta-${key}"
+        style="width:100%;min-height:120px;background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:.6rem .75rem;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:10px;line-height:1.6;outline:none;resize:vertical"
+        placeholder="Cole aqui o conteúdo da base...">${saved}</textarea>
+      <div style="display:flex;gap:6px;margin-top:.35rem">
+        <button class="btn btn-primary" style="font-size:11px;padding:3px 10px" onclick="kbSaveOne('${key}')">Salvar</button>
+        <button class="btn btn-danger" style="font-size:11px;padding:3px 10px" onclick="kbClearOne('${key}')">Limpar</button>
+      </div>`;
+  });
+}
+
+function kbSaveOne(key) {
+  const ta = document.getElementById(`kb-ta-${key}`);
+  const st = document.getElementById(`kb-status-${key}`);
+  if (!ta) return;
+  kbSet(key, ta.value.trim());
+  if (st) { st.textContent = `✓ ${ta.value.trim().length} chars salvos`; st.style.color='var(--green)'; }
+}
+
+function kbClearOne(key) {
+  kbClear(key);
+  const ta = document.getElementById(`kb-ta-${key}`);
+  const st = document.getElementById(`kb-status-${key}`);
+  if (ta) ta.value = '';
+  if (st) { st.textContent = 'usando padrão interno'; st.style.color='var(--text3)'; }
+}
+
+function kbSaveAll() {
+  Object.keys(KB_LABELS).forEach(key => kbSaveOne(key));
+}
+
+function kbClearAll() {
+  if (!confirm('Limpar todas as bases? Os extratores voltarão a usar os prompts internos.')) return;
+  Object.keys(KB_LABELS).forEach(key => kbClearOne(key));
 }
 
 // ══════════════════════════════════════════════
@@ -838,6 +1033,7 @@ function showPage(name,el){
   document.getElementById('topbarTitle').textContent=el?el.textContent.trim():name;
   if(name==='historico')renderHistorico();
   if(name==='csv')renderCSVPage();
+  if(name==='bases')initKbPage();
 }
 
 async function getCotacao(ds){
