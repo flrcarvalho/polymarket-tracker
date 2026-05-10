@@ -178,7 +178,10 @@ table.tbl tr:hover td{background:rgba(255,255,255,.02)}
     <div class="page" id="page-historico">
       <div class="page-header">
         <div><div class="page-title">Histórico</div><div class="page-sub">apostas registradas localmente</div></div>
-        <button class="btn" onclick="limparHistorico()" style="color:var(--red);border-color:rgba(240,80,110,.3)">Limpar histórico</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="limparERegerar()">↺ Regerar histórico</button>
+          <button class="btn" onclick="limparHistorico()" style="color:var(--red);border-color:rgba(240,80,110,.3)">Limpar tudo</button>
+        </div>
       </div>
       <div class="kpi-grid" id="hist-kpis"></div>
       <div class="card"><div class="card-body tbl-wrap" id="tbl-historico"><div class="empty-state">Nenhuma aposta registrada ainda.</div></div></div>
@@ -552,34 +555,23 @@ async function gerarCSV(){
   const hist=JSON.parse(localStorage.getItem(HIST_KEY)||'{"ids":[],"linhas":[]}');
   let novas=0;
 
-  // encerradas — ordenar por endDate asc
+  /*
+   * REGRA: só entram no histórico apostas com resultado DEFINITIVO (W ou L).
+   * Posições ativas NUNCA entram — só entram quando resolverem.
+   * Uma linha já registrada NUNCA é alterada — ordem da planilha é preservada.
+   */
   const sorted=[...dadosFechados].sort((a,b)=>(parseDateFromPos(a,true)||new Date(0))-(parseDateFromPos(b,true)||new Date(0)));
   for(const pos of sorted){
     const id=makeId(pos,'__c');
+    if(hist.ids.includes(id))continue; // já registrada — nunca alterar
     const pnl=parseFloat(pos.cashPnl||0);
     const resultado=pnl>0?'W':'L';
-    const date=fmtDate(pos,true); // endDate = data da partida
+    const date=fmtDate(pos,true);
     let cotacao=date?await getCotacao(date):null;
     if(!cotacao&&dolarHoje)cotacao=dolarHoje.val;
-    const linha=buildLinha(pos,resultado,date,cotacao);
-    if(!hist.ids.includes(id)){hist.ids.push(id);hist.linhas.push(linha);novas++;}
-    else{const idx=hist.ids.indexOf(id);if(hist.linhas[idx]?.split('\t')[9]==='')hist.linhas[idx]=linha;}
-  }
-
-  // ativas — usa _eventEndDate (data do evento) se disponível, senão startDate
-  const ativasSorted=[...dadosAtivos].sort((a,b)=>{
-    const da=a._eventEndDate?new Date(a._eventEndDate):(parseDateFromPos(a,false)||new Date(0));
-    const db=b._eventEndDate?new Date(b._eventEndDate):(parseDateFromPos(b,false)||new Date(0));
-    return da-db;
-  });
-  for(const pos of ativasSorted){
-    const id=makeId(pos,'__a');
-    // data: prefere endDate do evento (data da partida)
-    const date=pos._eventEndDate?fmtObj(parseISODate(pos._eventEndDate)||new Date(pos._eventEndDate)):fmtDate(pos,false);
-    // cotação do dia do evento, ou hoje como fallback
-    let cotacao=date?await getCotacao(date):null;
-    if(!cotacao&&dolarHoje)cotacao=dolarHoje.val;
-    if(!hist.ids.includes(id)){hist.ids.push(id);hist.linhas.push(buildLinha(pos,'',date,cotacao));novas++;}
+    hist.ids.push(id);
+    hist.linhas.push(buildLinha(pos,resultado,date,cotacao));
+    novas++;
   }
 
   localStorage.setItem(HIST_KEY,JSON.stringify(hist));
@@ -610,9 +602,10 @@ function renderHistorico(){
   if(!hist.linhas.length){el.innerHTML='<div class="empty-state">Nenhuma aposta registrada.</div>';ki.innerHTML='';return;}
   const W=hist.linhas.filter(l=>l.split('\t')[9]==='W').length;
   const L=hist.linhas.filter(l=>l.split('\t')[9]==='L').length;
-  const A=hist.linhas.filter(l=>l.split('\t')[9]==='').length;
+  // Sem ativas no histórico — só W e L entram
   const vol=hist.linhas.reduce((s,l)=>{const p=l.split('\t');return s+(parseFloat(p[7].replace(',','.'))||0);},0);
-  ki.innerHTML=`<div class="kpi"><div class="kpi-label">Total</div><div class="kpi-val">${hist.linhas.length}</div></div><div class="kpi"><div class="kpi-label">Ganhas</div><div class="kpi-val green">${W}W</div></div><div class="kpi"><div class="kpi-label">Perdidas</div><div class="kpi-val red">${L}L</div></div><div class="kpi"><div class="kpi-label">Em aberto</div><div class="kpi-val amber">${A}</div></div><div class="kpi"><div class="kpi-label">Volume BRL</div><div class="kpi-val blue">R$ ${nf(vol,0)}</div></div>`;
+  const wr=(W+L)>0?Math.round(W/(W+L)*100):0;
+  ki.innerHTML=`<div class="kpi"><div class="kpi-label">Total</div><div class="kpi-val">${hist.linhas.length}</div></div><div class="kpi"><div class="kpi-label">Ganhas</div><div class="kpi-val green">${W}W</div></div><div class="kpi"><div class="kpi-label">Perdidas</div><div class="kpi-val red">${L}L</div></div><div class="kpi"><div class="kpi-label">Win Rate</div><div class="kpi-val ${wr>=50?'green':'red'}">${wr}%</div></div><div class="kpi"><div class="kpi-label">Volume BRL</div><div class="kpi-val blue">R$ ${nf(vol,0)}</div></div>`;
   el.innerHTML=tw('<tr><th>Res</th><th>Mercado</th><th>Data partida</th><th>Stake BRL</th><th>Odd</th></tr>',
     hist.linhas.slice().reverse().map(ln=>{
       const p=ln.split('\t'),res=p[9]||'';
@@ -639,6 +632,12 @@ function baixarCSV(){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/tab-separated-values;charset=utf-8;'}));a.download=`polymarket_${new Date().toISOString().slice(0,10)}.tsv`;a.click();
 }
 function limparHistorico(){if(!confirm('Limpar todo o histórico local?'))return;localStorage.removeItem(HIST_KEY);renderHistorico();}
+async function limparERegerar(){
+  if(!confirm('Isso vai limpar o histórico atual e regenerar apenas com apostas resolvidas. Continuar?'))return;
+  localStorage.removeItem(HIST_KEY);
+  await gerarCSV();
+  renderHistorico();
+}
 
 const sw=localStorage.getItem(WALLET_KEY);
 if(sw){
