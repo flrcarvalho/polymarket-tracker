@@ -130,20 +130,22 @@ table.tbl tr:hover td{background:rgba(255,255,255,.02)}
 .ext-tbl-wrap{overflow-x:auto;background:var(--bg4)}
 table.ext-tbl{width:100%;border-collapse:collapse;font-size:11px;font-family:'IBM Plex Mono',monospace;table-layout:fixed}
 table.ext-tbl th{padding:6px 8px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);border-bottom:1px solid var(--border2);background:var(--bg3);white-space:nowrap;overflow:hidden}
-table.ext-tbl td{padding:0;border-bottom:1px solid var(--border);vertical-align:middle}
+table.ext-tbl td{padding:0;border-bottom:1px solid var(--border);vertical-align:middle;background:var(--bg4)}
 table.ext-tbl tr:last-child td{border-bottom:none}
-table.ext-tbl tr:hover td{background:rgba(255,255,255,.015)}
-table.ext-tbl td input{width:100%;background:transparent;border:none;outline:none;padding:6px 8px;color:var(--text2);font-family:'IBM Plex Mono',monospace;font-size:11px;min-width:0}
-table.ext-tbl td input:focus{background:rgba(0,214,143,.06);color:var(--text)}
-table.ext-tbl td input.col-res{color:var(--green);font-weight:700}
-table.ext-tbl td input.col-res[value="L"]{color:var(--red)}
-table.ext-tbl td input.col-res[value="V"]{color:var(--amber)}
+table.ext-tbl tr:hover td{background:var(--bg5) !important}
+table.ext-tbl td input{width:100%;background:transparent !important;border:none;outline:none;padding:6px 8px;color:var(--text2);font-family:'IBM Plex Mono',monospace;font-size:11px;min-width:0;-webkit-appearance:none;appearance:none;box-shadow:none}
+table.ext-tbl td input:focus{background:rgba(0,214,143,.07) !important;color:var(--text)}
+table.ext-tbl td input.col-res{font-weight:700}
 /* Polymarket table */
 table.poly-tbl{width:100%;border-collapse:collapse;font-size:11px;font-family:'IBM Plex Mono',monospace;table-layout:fixed}
 table.poly-tbl th{padding:7px 10px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap;background:var(--bg3)}
-table.poly-tbl td{padding:7px 10px;border-bottom:1px solid var(--border);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
+table.poly-tbl td{padding:0;border-bottom:1px solid var(--border);vertical-align:middle;background:var(--bg4)}
 table.poly-tbl tr:last-child td{border-bottom:none}
-table.poly-tbl tr:hover td{background:rgba(255,255,255,.02)}
+table.poly-tbl tr:hover td{background:var(--bg5) !important}
+table.poly-tbl td input{width:100%;background:transparent !important;border:none;outline:none;padding:7px 10px;color:var(--text2);font-family:'IBM Plex Mono',monospace;font-size:11px;min-width:0;-webkit-appearance:none;appearance:none;box-shadow:none}
+table.poly-tbl td input:focus{background:rgba(0,214,143,.07) !important;color:var(--text)}
+table.poly-tbl td input.col-res{font-weight:700}
+
 
 </style>
 </head>
@@ -474,7 +476,7 @@ INÍCIO: linha contendo "R$XXX,XX Criar Aposta"
 FIM: linha contendo "Aposta | Retorno Total | Retorno Obtido"
 Todos os blocos CRIAR APOSTA no mesmo intervalo = 1 único bilhete → 1 linha CSV.
 
-ORDEM: última imagem → primeira imagem; dentro da imagem: de baixo para cima.
+ORDEM DE SAÍDA: mais antiga → mais recente (primeira imagem → última imagem; dentro da imagem: de cima para baixo).
 
 DECISÃO DE RESULTADO:
 1. VOID (prioridade máxima): Retorno=Stake e sem indicação de vitória → V
@@ -653,7 +655,7 @@ function buildSystemPrompt(casa, manualDate='') {
 
   if (instStored) {
     // User has their own instruction for this casa
-    return `${instStored}\n\n${globalMasters}\n\n${dateNote}\n\nREGRA CRÍTICA DE SAÍDA:\n- Retornar APENAS linhas CSV separadas por ponto e vírgula\n- Sem texto adicional, sem cabeçalho, sem markdown, sem \`\`\`\n- Coluna Tipster SEMPRE vazia (3ª coluna)\n- 10 colunas por linha: Data;Esporte;;Casa;;Aposta;Descrição;Stake;Odd;Resultado`;
+    return `${instStored}\n\n${globalMasters}\n\n${dateNote}\n\nREGRA CRÍTICA DE SAÍDA:\n- Retornar APENAS linhas CSV separadas por ponto e vírgula\n- Sem texto adicional, sem cabeçalho, sem markdown, sem \`\`\`\n- Coluna Tipster SEMPRE vazia (3ª coluna)\n- 10 colunas por linha: Data;Esporte;;Casa;;Aposta;Descrição;Stake;Odd;Resultado\n- ORDEM OBRIGATÓRIA: mais antiga → mais recente`;
   }
 
   // Fallback to hardcoded PROMPTS
@@ -745,11 +747,20 @@ function buildExtUI(containerId, casa, inputMode, badgeClass, badgeLabel) {
       <div class="ext-output-area">
         <div class="ext-output-header">
           <span class="card-title">Saída — editável antes de copiar</span>
-          <div style="display:flex;gap:6px">
-            <button class="btn btn-primary" onclick="copiarSaida('${containerId}')">⎘ Copiar CSV</button>
-            <button class="btn" onclick="baixarSaida('${containerId}','${casa}')">↓ TSV</button>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="copiarSaida('${containerId}')">⎘ CSV</button>
+            <button class="btn" style="background:rgba(91,156,246,.15);border-color:var(--blue);color:var(--blue)" onclick="copiarTSV('${containerId}')">⎘ TSV planilha</button>
+            <button class="btn" onclick="baixarSaida('${containerId}','${casa}')">↓ Baixar</button>
             <button class="btn" onclick="adicionarLinha('${containerId}')">+ Linha</button>
           </div>
+        </div>
+        <div style="padding:.45rem .85rem;border-bottom:1px solid var(--border);background:var(--bg3);display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:9px;color:var(--text3);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">Preencher todas:</span>
+          <input id="bulk-tipster-${containerId}" placeholder="Tipster..." style="background:var(--bg4);border:1px solid var(--border2);border-radius:4px;padding:3px 7px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;outline:none;width:100px"/>
+          <button class="btn" style="font-size:11px;padding:3px 9px" onclick="bulkFill('${containerId}',2,'bulk-tipster-${containerId}')">→ Tipster</button>
+          <input id="bulk-parceiro-${containerId}" placeholder="Parceiro..." style="background:var(--bg4);border:1px solid var(--border2);border-radius:4px;padding:3px 7px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;outline:none;width:100px"/>
+          <button class="btn" style="font-size:11px;padding:3px 9px" onclick="bulkFill('${containerId}',4,'bulk-parceiro-${containerId}')">→ Parceiro</button>
+          <button class="btn btn-danger" style="font-size:11px;padding:3px 9px;margin-left:auto" onclick="clearExtractor('${containerId}')">✕ Limpar</button>
         </div>
         <div id="output-tbl-wrap-${containerId}" class="ext-tbl-wrap">
           <div class="ext-output-pre empty" id="output-${containerId}">aguardando extração...</div>
@@ -880,13 +891,39 @@ function baixarSaida(containerId, casa) {
   a.click();
 }
 
+function copiarTSV(containerId) {
+  const tbody = document.getElementById(`ext-tbody-${containerId}`);
+  if (!tbody) return;
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const header = COLS.join('\t');
+  const lines = rows.map(tr => Array.from(tr.querySelectorAll('input')).map(i => i.value).join('\t'));
+  const tsv = [header, ...lines].join('\n');
+  navigator.clipboard.writeText(tsv).then(() => {
+    const area = document.getElementById(`output-tbl-wrap-${containerId}`)?.closest('.ext-output-area');
+    if (!area) return;
+    const btn = Array.from(area.querySelectorAll('button')).find(b => b.textContent.includes('TSV planilha'));
+    if (btn) { const o=btn.textContent; btn.textContent='✓ Copiado!'; setTimeout(()=>btn.textContent=o,2000); }
+  });
+}
+
+function bulkFill(containerId, colIdx, inputId) {
+  const val = document.getElementById(inputId)?.value || '';
+  const tbody = document.getElementById(`ext-tbody-${containerId}`);
+  if (!tbody) return;
+  tbody.querySelectorAll('tr').forEach(tr => {
+    const inp = tr.querySelectorAll('input')[colIdx];
+    if (inp) inp.value = val;
+  });
+}
+
 function copiarSaida(containerId) {
-  const el = document.getElementById(`output-${containerId}`);
-  const txt = el.textContent;
-  if (!txt || el.classList.contains('empty')) return;
-  navigator.clipboard.writeText(txt).then(() => {
-    const btn = el.closest('.ext-output-area').querySelector('.btn-primary');
-    if (btn) { const orig=btn.textContent; btn.textContent='✓ Copiado!'; setTimeout(()=>btn.textContent=orig,2000); }
+  const csv = getTableCSV(containerId);
+  if (!csv) return;
+  navigator.clipboard.writeText(csv).then(() => {
+    const area = document.getElementById(`output-tbl-wrap-${containerId}`)?.closest('.ext-output-area');
+    if (!area) return;
+    const btn = area.querySelector('.btn-primary');
+    if (btn) { const o=btn.textContent; btn.textContent='✓ Copiado!'; setTimeout(()=>btn.textContent=o,2000); }
   });
 }
 const COLS = ['Data','Esporte','Tipster','Casa','Parceiro','Aposta','Descrição','Stake','Odd','Resultado'];
@@ -948,16 +985,6 @@ function adicionarLinha(containerId) {
   tr.querySelector('input').focus();
   const linesEl = document.getElementById(`lines-${containerId}`);
   if (linesEl) linesEl.textContent = `${tbody.querySelectorAll('tr').length} linhas`;
-}
-
-function copiarSaida(containerId) {
-  const csv = getTableCSV(containerId);
-  if (!csv) return;
-  navigator.clipboard.writeText(csv).then(() => {
-    const btn = document.querySelector(`#output-tbl-wrap-${containerId}`)
-      ?.closest('.ext-output-area')?.querySelector('.btn-primary');
-    if (btn) { const o=btn.textContent; btn.textContent='✓ Copiado!'; setTimeout(()=>btn.textContent=o,2000); }
-  });
 }
 
 function baixarSaida(containerId, casa) {
