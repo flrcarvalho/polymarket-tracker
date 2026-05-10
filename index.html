@@ -330,8 +330,8 @@ function setStatus(m,t){const e=document.getElementById('statusPill');e.classNam
  * Para cada REDEEM na activity que não tem par em /closed → reconstruir como posição ganha.
  * Pareia por conditionId: BUY fornece stake+avgPrice, REDEEM fornece valor recebido.
  */
-function reconciliarRedeems(fechados, activity){
-  // conditionIds já presentes em /closed
+function reconciliarRedeems(fechados, activity, activeCids=new Set()){
+  // conditionIds já presentes em fechados
   const closedIds=new Set(fechados.map(p=>p.conditionId).filter(Boolean));
 
   // Agrupar activity por conditionId
@@ -345,8 +345,11 @@ function reconciliarRedeems(fechados, activity){
 
   const extras=[];
   Object.entries(actMap).forEach(([cid,{buys,redeems}])=>{
-    // Só processar se tem REDEEM e NÃO está no /closed
-    if(!redeems.length||closedIds.has(cid))return;
+    // Só processar se:
+    // 1. tem REDEEM
+    // 2. NÃO está já em fechados
+    // 3. NÃO está ativa (ainda em /positions) — posição ativa com REDEEM parcial não é encerrada
+    if(!redeems.length||closedIds.has(cid)||activeCids.has(cid))return;
     // Calcular stake total (soma dos BUYs)
     const totalBought=buys.reduce((s,b)=>s+(parseFloat(b.size||0)*parseFloat(b.price||0)),0);
     // Calcular retorno total (soma dos REDEEMs)
@@ -413,39 +416,34 @@ async function buscar(){
   try{
     const B='https://data-api.polymarket.com';
     // Busca posições ativas, encerradas e histórico de atividade em paralelo
-    const[rA,rF,rAct]=await Promise.all([
+    const[rA,rAct]=await Promise.all([
       fetch(`${B}/positions?user=${w}&sizeThreshold=.1&limit=100`),
-      fetch(`${B}/positions?user=${w}&sizeThreshold=.1&closed=true&limit=100`),
       fetch(`${B}/activity?user=${w}&limit=500`)
     ]);
     if(!rA.ok)throw new Error('HTTP '+rA.status);
-    let[ativos,fechados,activity]=await Promise.all([rA.json(),rF.json(),rAct.ok?rAct.json():[]]);
-    dadosAtivos=Array.isArray(ativos)?ativos:[];
-    dadosFechados=Array.isArray(fechados)?fechados:[];
-    // Reconstruir posições ganhas resgatadas (REDEEM) que não aparecem em /closed
-    dadosFechados=reconciliarRedeems(dadosFechados, Array.isArray(activity)?activity:[]);
+    let[todasPos,activity]=await Promise.all([rA.json(),rAct.ok?rAct.json():[]]);
+    todasPos=Array.isArray(todasPos)?todasPos:[];
 
     /*
-     * CRITÉRIO SEGURO PARA IDENTIFICAR PERDIDAS NÃO MOVIDAS PARA /closed:
-     * redeemable:true + currentValue:0 = mercado resolvido, posição perdeu.
-     * NÃO usamos só currentValue:0 — pois posição ativa pode ter valor baixo.
-     * redeemable:true significa que o Polymarket já resolveu o mercado.
+     * ÚNICA FONTE DE VERDADE PARA CLASSIFICAÇÃO
+     * ==========================================
+     * PERDIDA:  redeemable===true  AND  currentValue===0
+     *           → Polymarket resolveu oficialmente, posição sem valor
+     * ATIVA:    qualquer outra coisa (redeemable:false OU currentValue>0)
+     *           → jogo ainda não aconteceu ou ainda tem valor de mercado
+     *
+     * NÃO usamos cashPnl para classificar — ele reflete variação de preço,
+     * não resultado oficial. Uma posição ativa com preço caindo tem cashPnl
+     * negativo mas NÃO é uma aposta perdida.
      */
-    const closedCids=new Set(dadosFechados.map(p=>p.conditionId).filter(Boolean));
-    dadosAtivos.forEach(p=>{
-      if(p.redeemable===true && parseFloat(p.currentValue||0)===0 && !closedCids.has(p.conditionId)){
-        dadosFechados.push({
-          ...p,
-          cashPnl:-parseFloat(p.initialValue||0),
-          endDate:p.endDate||p.startDate,
-          _fromRedeemable:true
-        });
-        closedCids.add(p.conditionId);
-        console.log('[Polymarket] Perdida via redeemable:',p.title,'endDate:',p.endDate);
-      }
-    });
-    // Remover das ativas as que foram identificadas como perdidas
-    dadosAtivos=dadosAtivos.filter(p=>!(p.redeemable===true && parseFloat(p.currentValue||0)===0));
+    dadosFechados=todasPos.filter(p=>p.redeemable===true && parseFloat(p.currentValue||0)===0);
+    dadosAtivos=todasPos.filter(p=>!(p.redeemable===true && parseFloat(p.currentValue||0)===0));
+    // Reconstruir posições ganhas resgatadas (REDEEM):
+    // posições que já foram resgatadas (Won) e não aparecem mais em /positions
+    const activeCids=new Set(todasPos.map(p=>p.conditionId).filter(Boolean));
+    dadosFechados=reconciliarRedeems(dadosFechados, Array.isArray(activity)?activity:[], activeCids);
+
+    // Classificação já feita acima com base em redeemable+currentValue
 
     dolarHoje=await getDolarHoje();
     buscarEndDatesAtivas(); // sync agora
