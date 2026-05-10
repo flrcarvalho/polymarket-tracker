@@ -376,47 +376,15 @@ function reconciliarRedeems(fechados, activity){
   return[...fechados,...extras];
 }
 
-async function buscarEndDatesAtivas(){
-  if(!dadosAtivos.length)return;
-  try{
-    // Gamma API bloqueia CORS do GitHub Pages.
-    // Solução: buscar pelo slug de cada posição ativa via Gamma sem token_ids,
-    // ou usar o conditionId para chamar market by id na Gamma API via proxy indireto.
-    // Alternativa funcional: extrair endDate do campo startDate da posição ativa +
-    // buscar via /markets?condition_ids= na data-api (que aceita CORS).
-    const condIds=dadosAtivos.map(p=>p.conditionId).filter(Boolean);
-    if(!condIds.length)return;
-
-    // data-api aceita CORS e tem endpoint de markets por conditionId
-    const params=condIds.map(c=>`condition_ids=${encodeURIComponent(c)}`).join('&');
-    const r=await fetch(`https://data-api.polymarket.com/markets?${params}&limit=100`);
-    if(!r.ok){
-      console.warn('[Polymarket] data-api/markets não respondeu:',r.status);
-      return;
-    }
-    const markets=await r.json();
-    const map={};
-    (Array.isArray(markets)?markets:[]).forEach(m=>{
-      const end=m.endDate||m.end_date||m.endDateIso||null;
-      if(!end)return;
-      if(m.conditionId)map[m.conditionId]=end;
-      // também mapear por asset/token
-      const ids=m.clobTokenIds||m.clob_token_ids||[];
-      ids.forEach(tid=>{
-        const key=typeof tid==='string'?tid:(tid?.token_id||null);
-        if(key)map[key]=end;
-      });
-    });
-
-    dadosAtivos=dadosAtivos.map(p=>{
-      const endDate=map[p.conditionId]||map[p.asset]||null;
-      return{...p,_eventEndDate:endDate};
-    });
-
-    console.log('[Polymarket] endDate via data-api:',
-      dadosAtivos.map(p=>({title:(p.title||'').substring(0,40),_eventEndDate:p._eventEndDate}))
-    );
-  }catch(e){console.warn('[Polymarket] buscarEndDatesAtivas error:',e);}
+/*
+ * endDate já vem direto no campo /positions — não precisa de chamada extra.
+ * Simplesmente copia o endDate da posição para _eventEndDate.
+ */
+function buscarEndDatesAtivas(){
+  dadosAtivos=dadosAtivos.map(p=>({...p,_eventEndDate:p.endDate||null}));
+  console.log('[Polymarket] endDate das ativas:',
+    dadosAtivos.map(p=>({t:(p.title||'').substring(0,35),end:p._eventEndDate,redeemable:p.redeemable}))
+  );
 }
 
 function eventDateBadge(endDateStr){
@@ -456,11 +424,31 @@ async function buscar(){
     dadosFechados=Array.isArray(fechados)?fechados:[];
     // Reconstruir posições ganhas resgatadas (REDEEM) que não aparecem em /closed
     dadosFechados=reconciliarRedeems(dadosFechados, Array.isArray(activity)?activity:[]);
-    // NOTA: não inferimos L a partir de currentValue=0 — sem endDate confiável
-    // isso causaria falsos negativos em partidas futuras. Posições abertas
-    // com valor baixo permanecem como "ativa" até a API as mover para /closed.
+
+    /*
+     * CRITÉRIO SEGURO PARA IDENTIFICAR PERDIDAS NÃO MOVIDAS PARA /closed:
+     * redeemable:true + currentValue:0 = mercado resolvido, posição perdeu.
+     * NÃO usamos só currentValue:0 — pois posição ativa pode ter valor baixo.
+     * redeemable:true significa que o Polymarket já resolveu o mercado.
+     */
+    const closedCids=new Set(dadosFechados.map(p=>p.conditionId).filter(Boolean));
+    dadosAtivos.forEach(p=>{
+      if(p.redeemable===true && parseFloat(p.currentValue||0)===0 && !closedCids.has(p.conditionId)){
+        dadosFechados.push({
+          ...p,
+          cashPnl:-parseFloat(p.initialValue||0),
+          endDate:p.endDate||p.startDate,
+          _fromRedeemable:true
+        });
+        closedCids.add(p.conditionId);
+        console.log('[Polymarket] Perdida via redeemable:',p.title,'endDate:',p.endDate);
+      }
+    });
+    // Remover das ativas as que foram identificadas como perdidas
+    dadosAtivos=dadosAtivos.filter(p=>!(p.redeemable===true && parseFloat(p.currentValue||0)===0));
+
     dolarHoje=await getDolarHoje();
-    await buscarEndDatesAtivas();
+    buscarEndDatesAtivas(); // sync agora
     document.getElementById('lastUpdate').textContent='atualizado '+new Date().toLocaleTimeString('pt-BR');
     document.getElementById('dashSub').textContent=`${dadosAtivos.length} ativas · ${dadosFechados.length} encerradas · ${new Date().toLocaleDateString('pt-BR')}`;
     setStatus(`✓ ${dadosAtivos.length+dadosFechados.length} posições`,'ok');
@@ -654,7 +642,17 @@ function baixarCSV(){
 }
 function limparHistorico(){if(!confirm('Limpar todo o histórico local?'))return;localStorage.removeItem(HIST_KEY);renderHistorico();}
 
-const sw=localStorage.getItem(WALLET_KEY);if(sw)document.getElementById('walletInput').value=sw;
+const sw=localStorage.getItem(WALLET_KEY);
+if(sw){
+  document.getElementById('walletInput').value=sw;
+  // Auto-sincronizar ao carregar se tiver wallet salvo
+  setTimeout(buscar, 500);
+}
+// Auto-sync a cada 5 minutos
+setInterval(()=>{
+  const w=document.getElementById('walletInput').value.trim();
+  if(w&&w.startsWith('0x')) buscar();
+}, 5*60*1000);
 </script>
 </body>
 </html>
