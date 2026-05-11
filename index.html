@@ -177,16 +177,16 @@ table.poly-tbl td input.col-res{font-weight:700}
     </div>
     <div class="nav-group">Extratores</div>
     <div class="nav-item" onclick="showPage('ext-bet365',this)">
-      <img class="nav-logo" src="https://logo.clearbit.com/bet365.com" onerror="this.style.display='none'" alt=""/>Bet365
+      <img class="nav-logo" src="https://www.google.com/s2/favicons?domain=bet365.com\&sz=64" onerror="this.style.display='none'" alt=""/>Bet365
     </div>
     <div class="nav-item" onclick="showPage('ext-betano',this)">
-      <img class="nav-logo" src="https://logo.clearbit.com/betano.com" onerror="this.style.display='none'" alt=""/>Betano
+      <img class="nav-logo" src="https://www.google.com/s2/favicons?domain=betano.com\&sz=64" onerror="this.style.display='none'" alt=""/>Betano
     </div>
     <div class="nav-item" onclick="showPage('ext-betfair',this)">
-      <img class="nav-logo" src="https://logo.clearbit.com/betfair.com" onerror="this.style.display='none'" alt=""/>Betfair
+      <img class="nav-logo" src="https://www.google.com/s2/favicons?domain=betfair.com\&sz=64" onerror="this.style.display='none'" alt=""/>Betfair
     </div>
     <div class="nav-item" onclick="showPage('ext-superbet',this)">
-      <img class="nav-logo" src="https://logo.clearbit.com/superbet.com.br" onerror="this.style.display='none'" alt=""/>Superbet
+      <img class="nav-logo" src="https://www.google.com/s2/favicons?domain=superbet.com.br\&sz=64" onerror="this.style.display='none'" alt=""/>Superbet
     </div>
     <div class="nav-item" onclick="showPage('ext-generic',this)">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Genérica
@@ -300,7 +300,7 @@ table.poly-tbl td input.col-res{font-weight:700}
     <div class="page" id="page-ext-bet365">
       <div class="page-header">
         <div style="display:flex;align-items:center;gap:12px">
-          <img class="casa-logo-header" src="https://logo.clearbit.com/bet365.com" onerror="this.style.display='none'" alt="Bet365"/>
+          <img class="casa-logo-header" src="https://www.google.com/s2/favicons?domain=bet365.com\&sz=64" onerror="this.style.display='none'" alt="Bet365"/>
           <div><div class="page-title">Bet365</div><div class="page-sub">envie prints do app/site · saída CSV MASTER 2026</div></div>
         </div>
       </div>
@@ -311,7 +311,7 @@ table.poly-tbl td input.col-res{font-weight:700}
     <div class="page" id="page-ext-betano">
       <div class="page-header">
         <div style="display:flex;align-items:center;gap:12px">
-          <img class="casa-logo-header" src="https://logo.clearbit.com/betano.com" onerror="this.style.display='none'" alt="Betano"/>
+          <img class="casa-logo-header" src="https://www.google.com/s2/favicons?domain=betano.com\&sz=64" onerror="this.style.display='none'" alt="Betano"/>
           <div><div class="page-title">Betano</div><div class="page-sub">cole o texto dos bilhetes · saída CSV MASTER 2026</div></div>
         </div>
       </div>
@@ -322,7 +322,7 @@ table.poly-tbl td input.col-res{font-weight:700}
     <div class="page" id="page-ext-betfair">
       <div class="page-header">
         <div style="display:flex;align-items:center;gap:12px">
-          <img class="casa-logo-header" src="https://logo.clearbit.com/betfair.com" onerror="this.style.display='none'" alt="Betfair"/>
+          <img class="casa-logo-header" src="https://www.google.com/s2/favicons?domain=betfair.com\&sz=64" onerror="this.style.display='none'" alt="Betfair"/>
           <div><div class="page-title">Betfair</div><div class="page-sub">cole o texto dos bilhetes · saída CSV MASTER 2026</div></div>
         </div>
       </div>
@@ -333,7 +333,7 @@ table.poly-tbl td input.col-res{font-weight:700}
     <div class="page" id="page-ext-superbet">
       <div class="page-header">
         <div style="display:flex;align-items:center;gap:12px">
-          <img class="casa-logo-header" src="https://logo.clearbit.com/superbet.com.br" onerror="this.style.display='none'" alt="Superbet"/>
+          <img class="casa-logo-header" src="https://www.google.com/s2/favicons?domain=superbet.com.br\&sz=64" onerror="this.style.display='none'" alt="Superbet"/>
           <div><div class="page-title">Superbet</div><div class="page-sub">envie prints do app/site · saída CSV MASTER 2026</div></div>
         </div>
       </div>
@@ -1009,12 +1009,17 @@ function kbClearAll() {
 //  INIT EXTRACTORS
 // ══════════════════════════════════════════════
 function initExtractors() {
-  buildExtUI('ext-bet365-ui',  'bet365',  'image', 'badge-bet365',  'Bet365',  'https://logo.clearbit.com/bet365.com');
-  buildExtUI('ext-betano-ui',  'betano',  'text',  'badge-betano',  'Betano',  'https://logo.clearbit.com/betano.com');
-  buildExtUI('ext-betfair-ui', 'betfair', 'text',  'badge-betfair', 'Betfair', 'https://logo.clearbit.com/betfair.com');
-  buildExtUI('ext-superbet-ui','superbet','image', 'badge-superbet','Superbet','https://logo.clearbit.com/superbet.com.br');
+  const logos = {
+    bet365:   'https://www.google.com/s2/favicons?domain=bet365.com&sz=64',
+    betano:   'https://www.google.com/s2/favicons?domain=betano.com&sz=64',
+    betfair:  'https://www.google.com/s2/favicons?domain=betfair.com&sz=64',
+    superbet: 'https://www.google.com/s2/favicons?domain=superbet.com.br&sz=64',
+  };
+  buildExtUI('ext-bet365-ui',  'bet365',  'image', 'badge-bet365',  'Bet365',  logos.bet365);
+  buildExtUI('ext-betano-ui',  'betano',  'text',  'badge-betano',  'Betano',  logos.betano);
+  buildExtUI('ext-betfair-ui', 'betfair', 'text',  'badge-betfair', 'Betfair', logos.betfair);
+  buildExtUI('ext-superbet-ui','superbet','image', 'badge-superbet','Superbet',logos.superbet);
   buildExtUI('ext-generic-ui', 'generic', 'both',  'badge-generic', 'Genérica', '');
-  // Enable Ctrl+V paste for image extractors
   enablePaste('ext-bet365-ui');
   enablePaste('ext-superbet-ui');
   enablePaste('ext-generic-ui');
