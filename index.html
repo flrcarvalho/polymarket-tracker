@@ -548,8 +548,9 @@ async function runExtractor(casa, inputType, textVal, images, manualDate='') {
       'anthropic-dangerous-direct-browser-access': 'true'
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 2000,
+      // Opus for image extraction (superior vision), Sonnet for text
+      model: inputType === 'image' ? 'claude-opus-4-5' : 'claude-sonnet-4-5',
+      max_tokens: 4000,
       system: sysPrompt,
       messages
     })
@@ -919,11 +920,20 @@ async function extract(containerId, casa) {
       const t = l.trim();
       if (!t) return false;
       if (t.startsWith('```') || t.startsWith('#')) return false;
-      return t.split(';').length >= 9;
+      // Accept both TAB-separated (new MASTER) and semicolon-separated lines
+      const tabCols = t.split('\t').length;
+      const semiCols = t.split(';').length;
+      return tabCols >= 9 || semiCols >= 9;
     });
 
-    // Casas que exibem mais recente→mais antigo: a instrução da aba Bases define a inversão
-    // Não inverter aqui — a ordem vem do modelo conforme as instruções coladas nas Bases
+    // Normalize all lines to semicolon-separated for internal table use
+    lines = lines.map(l => {
+      // If line has tabs and not semicolons, convert to semicolons
+      if (l.includes('\t') && !l.includes(';')) {
+        return l.split('\t').join(';');
+      }
+      return l;
+    });
 
     if (lines.length) {
       renderExtTable(containerId, lines);
