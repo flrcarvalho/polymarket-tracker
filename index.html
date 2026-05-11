@@ -87,8 +87,12 @@ table.tbl tr:hover td{background:rgba(255,255,255,.02)}
 .guide-sub{font-size:11px;color:var(--text3);margin-top:3px;font-family:'IBM Plex Mono',monospace}
 .code{background:var(--bg4);border:1px solid var(--border2);border-radius:4px;padding:1px 6px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--blue)}
 .empty-state{padding:2rem;text-align:center;color:var(--text3);font-size:12px;font-family:'IBM Plex Mono',monospace}
-.spin{display:inline-block;animation:rot .7s linear infinite}
-@keyframes rot{to{transform:rotate(360deg)}}
+.nav-logo{width:16px;height:16px;border-radius:3px;object-fit:contain;flex-shrink:0;opacity:.85}
+.nav-item.active .nav-logo{opacity:1}
+.nav-item:hover .nav-logo{opacity:1}
+.casa-logo-header{height:28px;width:auto;max-width:100px;object-fit:contain;border-radius:4px;filter:brightness(1.05)}
+[data-theme="dark"] .casa-logo-header{filter:brightness(1.1) drop-shadow(0 0 6px rgba(255,255,255,.08))}
+
 
 /* ── EXTRACTOR STYLES ── */
 .ext-wrap{display:flex;flex-direction:column;gap:1rem}
@@ -173,19 +177,19 @@ table.poly-tbl td input.col-res{font-weight:700}
     </div>
     <div class="nav-group">Extratores</div>
     <div class="nav-item" onclick="showPage('ext-bet365',this)">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>Bet365
+      <img class="nav-logo" src="https://logo.clearbit.com/bet365.com" onerror="this.style.display='none'" alt=""/>Bet365
     </div>
     <div class="nav-item" onclick="showPage('ext-betano',this)">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>Betano
+      <img class="nav-logo" src="https://logo.clearbit.com/betano.com" onerror="this.style.display='none'" alt=""/>Betano
     </div>
     <div class="nav-item" onclick="showPage('ext-betfair',this)">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>Betfair
+      <img class="nav-logo" src="https://logo.clearbit.com/betfair.com" onerror="this.style.display='none'" alt=""/>Betfair
     </div>
     <div class="nav-item" onclick="showPage('ext-superbet',this)">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>Superbet
+      <img class="nav-logo" src="https://logo.clearbit.com/superbet.com.br" onerror="this.style.display='none'" alt=""/>Superbet
     </div>
     <div class="nav-item" onclick="showPage('ext-generic',this)">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>Genérica
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Genérica
     </div>
     <div class="nav-group">Ajuda</div>
     <div class="nav-item" onclick="showPage('bases',this)">
@@ -295,7 +299,10 @@ table.poly-tbl td input.col-res{font-weight:700}
     <!-- EXTRATOR BET365 -->
     <div class="page" id="page-ext-bet365">
       <div class="page-header">
-        <div><div class="page-title">Extrator Bet365</div><div class="page-sub">envie prints do app/site · saída CSV MASTER 2026</div></div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <img class="casa-logo-header" src="https://logo.clearbit.com/bet365.com" onerror="this.style.display='none'" alt="Bet365"/>
+          <div><div class="page-title">Bet365</div><div class="page-sub">envie prints do app/site · saída CSV MASTER 2026</div></div>
+        </div>
       </div>
       <div id="ext-bet365-ui"></div>
     </div>
@@ -303,7 +310,10 @@ table.poly-tbl td input.col-res{font-weight:700}
     <!-- EXTRATOR BETANO -->
     <div class="page" id="page-ext-betano">
       <div class="page-header">
-        <div><div class="page-title">Extrator Betano</div><div class="page-sub">cole o texto dos bilhetes · saída CSV MASTER 2026</div></div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <img class="casa-logo-header" src="https://logo.clearbit.com/betano.com" onerror="this.style.display='none'" alt="Betano"/>
+          <div><div class="page-title">Betano</div><div class="page-sub">cole o texto dos bilhetes · saída CSV MASTER 2026</div></div>
+        </div>
       </div>
       <div id="ext-betano-ui"></div>
     </div>
@@ -311,7 +321,10 @@ table.poly-tbl td input.col-res{font-weight:700}
     <!-- EXTRATOR BETFAIR -->
     <div class="page" id="page-ext-betfair">
       <div class="page-header">
-        <div><div class="page-title">Extrator Betfair</div><div class="page-sub">cole o texto dos bilhetes · saída CSV MASTER 2026</div></div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <img class="casa-logo-header" src="https://logo.clearbit.com/betfair.com" onerror="this.style.display='none'" alt="Betfair"/>
+          <div><div class="page-title">Betfair</div><div class="page-sub">cole o texto dos bilhetes · saída CSV MASTER 2026</div></div>
+        </div>
       </div>
       <div id="ext-betfair-ui"></div>
     </div>
@@ -319,7 +332,10 @@ table.poly-tbl td input.col-res{font-weight:700}
     <!-- EXTRATOR SUPERBET -->
     <div class="page" id="page-ext-superbet">
       <div class="page-header">
-        <div><div class="page-title">Extrator Superbet</div><div class="page-sub">envie prints do app/site · saída CSV MASTER 2026</div></div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <img class="casa-logo-header" src="https://logo.clearbit.com/superbet.com.br" onerror="this.style.display='none'" alt="Superbet"/>
+          <div><div class="page-title">Superbet</div><div class="page-sub">envie prints do app/site · saída CSV MASTER 2026</div></div>
+        </div>
       </div>
       <div id="ext-superbet-ui"></div>
     </div>
@@ -327,7 +343,7 @@ table.poly-tbl td input.col-res{font-weight:700}
     <!-- EXTRATOR GENÉRICA -->
     <div class="page" id="page-ext-generic">
       <div class="page-header">
-        <div><div class="page-title">Extrator Genérico</div><div class="page-sub">qualquer casa — texto ou imagem · saída CSV MASTER 2026</div></div>
+        <div><div class="page-title">Genérica</div><div class="page-sub">qualquer casa — texto ou imagem · saída CSV MASTER 2026</div></div>
       </div>
       <div id="ext-generic-ui"></div>
     </div>
@@ -546,19 +562,23 @@ async function runExtractor(casa, inputType, textVal, images, manualDate='') {
 // ══════════════════════════════════════════════
 //  BUILD EXTRACTOR UI
 // ══════════════════════════════════════════════
-function buildExtUI(containerId, casa, inputMode, badgeClass, badgeLabel) {
+function buildExtUI(containerId, casa, inputMode, badgeClass, badgeLabel, logoUrl='') {
   const el = document.getElementById(containerId);
   if (!el) return;
 
   const showTabs = inputMode === 'both';
   let currentTab = inputMode === 'image' ? 'image' : 'text';
 
+  const logoHtml = logoUrl
+    ? `<img src="${logoUrl}" onerror="this.style.display='none'" style="height:20px;width:auto;border-radius:3px;object-fit:contain;opacity:.9" alt="${badgeLabel}"/>`
+    : `<span class="ext-casa-badge ${badgeClass}">${badgeLabel}</span>`;
+
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem;flex-wrap:wrap">
-      <span class="ext-casa-badge ${badgeClass}">${badgeLabel}</span>
+      ${logoHtml}
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
         <label style="font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace;white-space:nowrap">Data (DD/MM/AAAA)</label>
-        <input id="date-${containerId}" type="text" placeholder="ex: 09/05/2026"
+        <input id="date-${containerId}" type="text" placeholder="ex: ${new Date().toLocaleDateString('pt-BR')}"
           style="background:var(--bg4);border:1px solid var(--border2);border-radius:4px;padding:4px 8px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;outline:none;width:120px"/>
         <span style="font-size:9px;color:var(--text3);font-family:'IBM Plex Mono',monospace">opcional — usada se o bilhete não tiver data</span>
       </div>
@@ -655,13 +675,24 @@ function handleFiles(containerId, files) {
   const el = document.getElementById(containerId);
   if (!el._images) el._images = [];
   Array.from(files).forEach(f => {
-    const mime = f.type || 'image/png';
     const reader = new FileReader();
     reader.onload = ev => {
-      const b64 = ev.target.result.split(',')[1];
-      const idx = el._images.length;
-      el._images.push({ data: b64, mime });
-      addThumb(containerId, ev.target.result, idx);
+      const img = new Image();
+      img.onload = () => {
+        // Render at full native resolution — no compression, no resize
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        // PNG = lossless, preserves every pixel exactly as captured
+        const dataUrl = canvas.toDataURL('image/png');
+        const b64 = dataUrl.split(',')[1];
+        const idx = el._images.length;
+        el._images.push({ data: b64, mime: 'image/png' });
+        addThumb(containerId, dataUrl, idx);
+      };
+      img.src = ev.target.result;
     };
     reader.readAsDataURL(f);
   });
@@ -978,11 +1009,11 @@ function kbClearAll() {
 //  INIT EXTRACTORS
 // ══════════════════════════════════════════════
 function initExtractors() {
-  buildExtUI('ext-bet365-ui',  'bet365',  'image', 'badge-bet365',  'Bet365');
-  buildExtUI('ext-betano-ui',  'betano',  'text',  'badge-betano',  'Betano');
-  buildExtUI('ext-betfair-ui', 'betfair', 'text',  'badge-betfair', 'Betfair');
-  buildExtUI('ext-superbet-ui','superbet','image', 'badge-superbet','Superbet');
-  buildExtUI('ext-generic-ui', 'generic', 'both',  'badge-generic', 'Genérica');
+  buildExtUI('ext-bet365-ui',  'bet365',  'image', 'badge-bet365',  'Bet365',  'https://logo.clearbit.com/bet365.com');
+  buildExtUI('ext-betano-ui',  'betano',  'text',  'badge-betano',  'Betano',  'https://logo.clearbit.com/betano.com');
+  buildExtUI('ext-betfair-ui', 'betfair', 'text',  'badge-betfair', 'Betfair', 'https://logo.clearbit.com/betfair.com');
+  buildExtUI('ext-superbet-ui','superbet','image', 'badge-superbet','Superbet','https://logo.clearbit.com/superbet.com.br');
+  buildExtUI('ext-generic-ui', 'generic', 'both',  'badge-generic', 'Genérica', '');
   // Enable Ctrl+V paste for image extractors
   enablePaste('ext-bet365-ui');
   enablePaste('ext-superbet-ui');
