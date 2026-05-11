@@ -415,208 +415,9 @@ table.poly-tbl td input.col-res{font-weight:700}
 
 <script>
 // ══════════════════════════════════════════════
-//  SYSTEM PROMPTS — MASTER 2026
+//  SYSTEM PROMPTS — REMOVIDOS
+//  Toda instrução vem exclusivamente da aba Bases
 // ══════════════════════════════════════════════
-const MASTER_DESCRICAO = `MASTER_DESCRICAO_2026:
-Estrutura preferencial: Entidade → Mercado → Confronto
-Confronto: [Time A v Time B] — usar apenas "v", nunca "x", "vs", "@" ou hífen
-Mercado Contínuo: Over X.5 / Under X.5 (normalizar "Mais de/Menos de")
-Mercado Discreto: X+ Mercado
-Templates:
-- Anytime (Futebol): Jogador [Confronto]
-- Player Props: Jogador - Linha Mercado [Confronto]
-- Player Props múltiplos mercados: Jogador - Mercado A / Mercado B [Confronto]
-- Totais: Mercado [Confronto]
-- Handicap: Time Linha [Confronto]
-- Moneyline: Time [Confronto]
-Múltiplas: separar com //
-Proibido na descrição: odds, stake, resultado, placar, campeonato, horário, ID`;
-
-const MASTER_RESULTADO = `MASTER_RESULTADO_2026:
-Códigos válidos: W, L, V, HW, HL
-Prioridade void: Retorno=Stake sem vitória explícita → V
-W com retorno visível: Odd = Retorno / Stake
-L sem cashout: usar odd do bilhete
-L com cashout: Odd = Valor recebido / Stake
-HW/HL: usar odd do bilhete, nunca recalcular
-V: usar odd do bilhete, nunca 1,00
-Múltiplas W com retorno: Odd = Retorno / Stake`;
-
-const MASTER_ESPORTES = `MASTER_ESPORTES_2026:
-Futebol, NBA, NFL, NHL, F1, Tênis, MMA, Vôlei, Baseball, Rugby, Handebol, Dardos, Snooker, E-Sports, Basquete, Multiplos, Outro
-Prioridade: NBA > NFL > NHL > F1 > esporte genérico
-Multiplos: só quando mistura esportes diferentes na mesma aposta`;
-
-const MASTER_APOSTAS = `MASTER_APOSTAS_2026:
-Categorias: Ambas Marcam, Anytime, Assistência, Cartões, Chutes, Escanteios, Gols, Handicap, H2H, ML, DNB, Player Props, Team Props, Double-Double, Triplo-Duplo, Jardas, Corridas, Desarmes, Games, Sets, Múltipla, Outras
-Basquete/NBA: qualquer stat individual = Player Props (pontos, rebotes, assist, PRA, etc)
-Futebol marcar gol = Anytime; assistência = Assistência
-Prioridade: específica > Player Props > Outras`;
-
-const MASTER_CSV = `MASTER_CSV_2026:
-Colunas obrigatórias (ordem imutável): Data;Esporte;Tipster;Casa;Parceiro;Aposta;Descrição;Stake;Odd;Resultado
-Separador: ; (ponto e vírgula)
-Decimal: , (vírgula)
-Data: DD/MM/AAAA
-Sem cabeçalho na saída
-1 aposta = 1 linha
-Ordem: mais antiga → mais recente — OBRIGATÓRIO para todas as casas`;
-
-const PROMPTS = {
-  bet365: `EXTRATOR BET365 — Claude API 2026
-
-FUNÇÃO: Interpretar prints da Bet365 e converter cada aposta para o padrão global MASTER.
-OUTPUT VÁLIDO: APENAS linhas CSV separadas por ; — sem texto, sem explicações, sem cabeçalho, sem markdown.
-
-VALORES FIXOS: Casa=Bet365 | Tipster=vazio | Parceiro=vazio
-
-⚠️⚠️ REGRA DE ORDEM — OBRIGATÓRIA — LER ANTES DE PROCESSAR QUALQUER COISA ⚠️⚠️
-A Bet365 mostra bilhetes do MAIS RECENTE (topo) para o MAIS ANTIGO (base).
-O CSV DEVE sair do MAIS ANTIGO (base) para o MAIS RECENTE (topo).
-Ou seja: o ÚLTIMO bilhete visível no print vira a PRIMEIRA linha do CSV.
-            o PENÚLTIMO bilhete vira a SEGUNDA linha. E assim por diante.
-            o PRIMEIRO bilhete visível no print vira a ÚLTIMA linha do CSV.
-
-ETAPAS OBRIGATÓRIAS:
-ETAPA 1 — Varrer todas as imagens e listar TODOS os bilhetes na ordem em que aparecem (1=mais recente/topo, N=mais antigo/base)
-ETAPA 2 — Inverter a lista: começar do bilhete N e terminar no bilhete 1
-ETAPA 3 — Gerar o CSV nessa ordem invertida
-
-NUNCA gerar o CSV na ordem em que os bilhetes aparecem nas imagens.
-
-FORMATO: Separador=; | Decimal=vírgula | Sem cabeçalho
-Colunas: Data;Esporte;Tipster;Casa;Parceiro;Aposta;Descrição;Stake;Odd;Resultado
-
-DATA: usar data do jogo/evento se visível. Formato DD/MM/AAAA. Ignorar horário.
-
-STAKE: valor após "Aposta" ou "R$". Remover R$, remover ponto separador de milhar, manter vírgula decimal.
-
-ODD:
-- Odd exibida diretamente → usar
-- Múltipla sem odd total → multiplicar odds individuais
-- W com retorno visível → Odd = Retorno ÷ Stake (manter TODAS as casas decimais — nunca arredondar)
-
-CRIAR APOSTA (Bet Builder Bet365):
-- Todos os blocos "Criar Aposta" no mesmo bilhete = UMA única linha
-- Combinar seleções na descrição com //
-- Aposta = Múltipla
-- Bug de props duplicadas: mesmo jogador + mesmo fundamento + thresholds diferentes → manter apenas o MAIOR
-
-DETECÇÃO DE BILHETES:
-- Início: linha com "R$XXX,XX Criar Aposta"
-- Fim: linha com "Aposta | Retorno Total | Retorno Obtido"
-
-RESULTADO — ORDEM DE DECISÃO:
-1. VOID (prioridade máxima): Retorno=Stake e sem indicação explícita de vitória → V
-2. Ganhou→W | Perdida→L | Half Win / ½ Ganho→HW | Half Loss / ½ Perdido→HL | Void/Anulada/Cancelada→V
-
-ODD por resultado:
-- V → odd do bilhete (nunca 1,00, nunca recalcular)
-- W com retorno → Retorno ÷ Stake (precisão total)
-- L sem cashout → odd do bilhete (nunca 0)
-- L com cashout → Recebido ÷ Stake
-- HW / HL → odd do bilhete (nunca recalcular)
-
-SISTEMAS (Trixie/Yankee/Super Yankee/Patent/Lucky 15/31/63):
-- W com retorno → Odd = Retorno ÷ Stake
-- L sem cashout → calcular odd estrutural conforme tipo do sistema
-- V → preservar odd estrutural
-
-VALIDAÇÃO FINAL:
-- nº linhas = nº bilhetes detectados | separador ; | decimal , | ordem: última imagem/base → primeira imagem/topo
-- Resultado válido: W/L/V/HW/HL | Odd coerente | Void não classificado como W`,
-
-  betano: `MODO DE EXECUÇÃO: ESTRITO — sistema determinístico.
-NÃO interpretar. NÃO explicar. Apenas parsing + transformação + output CSV.
-OUTPUT VÁLIDO: APENAS linhas CSV, sem texto adicional, sem cabeçalho.
-
-CASA: Betano
-VALORES FIXOS: Casa=Betano | Tipster=vazio | Parceiro=vazio
-1 ID = 1 aposta = 1 linha CSV. Nunca incluir o ID no CSV.
-DATA: extrair do bloco. Formato DD/MM/AAAA, ignorar hora.
-STAKE: após "Valor"/"Aposta"/"Stake". Remover R$, separador milhar, vírgula decimal.
-ODD SIMPLES: se duas odds consecutivas para mesmo jogador (bug Betano), usar a MAIOR.
-ODD MÚLTIPLA: usar odd total explícita; se ausente, multiplicar odds.
-CHECK FINANCEIRO: se houver Ganhos/Retorno visível → Odd = Retorno / Stake (prioridade absoluta).
-CASHOUT: retorno=stake → V odd=1,00 | retorno≠stake → Odd=Recebido/Stake, retorno>stake→W, retorno<stake→L
-RESULTADO: Green/Won/Ganhou→W | Red/Lost/Perdida→L | Void/Cancelada→V | Half Win→HW | Half Loss→HL
-BUG PLAYER PROPS: mesmo jogador + mesmo fundamento + números diferentes → manter apenas o MAIOR número.
-ORDEM: mais recente → mais antigo no texto; CSV: inverter (mais antigo → mais recente).
-
-${MASTER_DESCRICAO}
-${MASTER_RESULTADO}
-${MASTER_ESPORTES}
-${MASTER_APOSTAS}
-${MASTER_CSV}
-
-SAÍDA FINAL: apenas CSV. Nenhum texto adicional.`,
-
-  betfair: `MODO DE EXECUÇÃO: ESTRITO — sistema determinístico.
-NÃO interpretar. NÃO explicar. Apenas parsing + transformação + output CSV.
-OUTPUT VÁLIDO: APENAS linhas CSV, sem texto adicional, sem cabeçalho.
-
-CASA: BetFair
-VALORES FIXOS: Casa=BetFair | Tipster=vazio | Parceiro=vazio
-DATA: usar data RESOLVIDA. Se em andamento, usar data da partida. Sem data → "Revisar".
-STAKE: campo "Valor Apostado" ou "Apostar". Remover R$. Vírgula decimal.
-ODD: extrair "Cotações combinadas". Vírgula decimal.
-CONFRONTO: formato "Time A @ Time B" → converter para [Time A v Time B]
-RESULTADO: Ganhos>0→W | Ganhos=0→L | bilhete aberto→vazio
-SELEÇÕES: "Mercado / Jogador" → Jogador - Mercado [Confronto]
-MÚLTIPLAS: "Duplo/4x/Múltiplas do Criar Aposta" → Aposta=Múltipla, separar com //
-ID formato "O/XXXXX/XXXXX" — nunca incluir no CSV.
-
-${MASTER_DESCRICAO}
-${MASTER_RESULTADO}
-${MASTER_ESPORTES}
-${MASTER_APOSTAS}
-${MASTER_CSV}
-
-SAÍDA FINAL: apenas CSV. Nenhum texto adicional.`,
-
-  superbet: `MODO DE EXECUÇÃO: ESTRITO — sistema determinístico.
-NÃO interpretar. NÃO explicar. Apenas parsing + transformação + output CSV.
-OUTPUT VÁLIDO: APENAS linhas CSV, sem texto adicional, sem cabeçalho.
-
-CASA: Superbet
-VALORES FIXOS: Casa=Superbet | Tipster=vazio | Parceiro=vazio
-1 ID (formato XXXX-XXXXXX) = 1 aposta = 1 linha CSV.
-DATA: usar data das SELEÇÕES, não do cabeçalho do bilhete.
-DATAS RELATIVAS: Hoje=${new Date().toLocaleDateString('pt-BR')} | Ontem=${new Date(Date.now()-86400000).toLocaleDateString('pt-BR')} | Amanhã=${new Date(Date.now()+86400000).toLocaleDateString('pt-BR')}
-Usar a data MAIS RECENTE entre todas as seleções do bilhete.
-STAKE: após "APOSTA". Remover R$. Vírgula decimal.
-RESULTADO: Ganhou→W | Perdido→L | Cancelado→V
-ODD W: Odd = Prêmio / Stake (manter precisão natural da divisão, não arredondar)
-ODD L: usar odd exibida
-BOOST (SUPERMÚLTIPLA): valor de Prêmio já inclui o boost.
-IGNORAR: elementos promocionais, Supersocial, Dicas.
-ORDEM: mais recente → mais antigo; CSV: inverter.
-
-${MASTER_DESCRICAO}
-${MASTER_RESULTADO}
-${MASTER_ESPORTES}
-${MASTER_APOSTAS}
-${MASTER_CSV}
-
-SAÍDA FINAL: apenas CSV. Nenhum texto adicional.`,
-
-  generic: `MODO DE EXECUÇÃO: ESTRITO — sistema determinístico.
-NÃO interpretar. NÃO explicar. Apenas parsing + transformação + output CSV.
-OUTPUT VÁLIDO: APENAS linhas CSV, sem texto adicional, sem cabeçalho.
-
-CASA: deixar VAZIO (nunca inferir)
-TIPSTER: deixar vazio salvo se explicitamente presente
-DATA: DD/MM/AAAA. Se não encontrada com segurança, usar ${new Date().toLocaleDateString('pt-BR')}.
-RESULTADO: se não determinável → deixar vazio
-
-${MASTER_DESCRICAO}
-${MASTER_RESULTADO}
-${MASTER_ESPORTES}
-${MASTER_APOSTAS}
-${MASTER_CSV}
-
-SAÍDA FINAL: apenas CSV. Nenhum texto adicional.`
-};
 
 // ══════════════════════════════════════════════
 //  EXTRACTOR ENGINE
@@ -684,25 +485,20 @@ function buildSystemPrompt(casa, manualDate='') {
   const apostStored  = kbGet('master_apostas');
   const csvStored    = kbGet('master_csv');
 
-  const hasBasesContent = instStored || descStored || resStored || espStored || apostStored || csvStored;
-
-  if (hasBasesContent) {
-    // Usar SOMENTE o que está nas Bases — sem nenhum hardcoded
-    const parts = [];
-    if (instStored)  parts.push(instStored);
-    if (descStored)  parts.push(descStored);
-    if (resStored)   parts.push(resStored);
-    if (espStored)   parts.push(espStored);
-    if (apostStored) parts.push(apostStored);
-    if (csvStored)   parts.push(csvStored);
-    parts.push(dateNote);
-    parts.push(`REGRA DE SAÍDA:\n- Retornar APENAS linhas CSV separadas por ponto e vírgula\n- Sem texto, sem cabeçalho, sem markdown, sem \`\`\`\n- 10 colunas: Data;Esporte;Tipster;Casa;Parceiro;Aposta;Descrição;Stake;Odd;Resultado`);
-    return parts.join('\n\n---\n\n');
+  if (!instStored && !descStored && !resStored && !espStored && !apostStored && !csvStored) {
+    throw new Error(`Aba Bases vazia para "${casa}". Cole as instruções na aba Bases antes de extrair.`);
   }
 
-  // Sem nada nas Bases: usar prompt hardcoded da casa
-  const base = PROMPTS[casa] || PROMPTS['generic'];
-  return `${base}\n\n${dateNote}`;
+  const parts = [];
+  if (instStored)  parts.push(instStored);
+  if (descStored)  parts.push(descStored);
+  if (resStored)   parts.push(resStored);
+  if (espStored)   parts.push(espStored);
+  if (apostStored) parts.push(apostStored);
+  if (csvStored)   parts.push(csvStored);
+  parts.push(dateNote);
+  parts.push('REGRA DE SAÍDA:\n- Retornar APENAS linhas CSV separadas por ponto e vírgula\n- Sem texto, sem cabeçalho, sem markdown, sem ```\n- 10 colunas: Data;Esporte;Tipster;Casa;Parceiro;Aposta;Descrição;Stake;Odd;Resultado');
+  return parts.join('\n\n---\n\n');
 }
 
 async function runExtractor(casa, inputType, textVal, images, manualDate='') {
@@ -1088,12 +884,15 @@ async function extract(containerId, casa) {
     const manualDate = dateInput ? dateInput.value.trim() : '';
     const raw = await runExtractor(casa, tab, textVal, images, manualDate);
     const stripped = raw.replace(/^```[a-z]*\n?/im,'').replace(/\n?```\s*$/m,'').trim();
-    const lines = stripped.split('\n').filter(l => {
+    let lines = stripped.split('\n').filter(l => {
       const t = l.trim();
       if (!t) return false;
       if (t.startsWith('```') || t.startsWith('#')) return false;
       return t.split(';').length >= 9;
     });
+
+    // Casas que exibem mais recente→mais antigo: a instrução da aba Bases define a inversão
+    // Não inverter aqui — a ordem vem do modelo conforme as instruções coladas nas Bases
 
     if (lines.length) {
       renderExtTable(containerId, lines);
