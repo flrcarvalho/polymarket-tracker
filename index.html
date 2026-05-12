@@ -1534,10 +1534,14 @@ function getResRows() {
       if (pts.length === 3) isoDate = `${pts[2]}-${pts[1].padStart(2,'0')}-${pts[0].padStart(2,'0')}`;
     } else isoDate = dateStr;
 
+    // Sport: always re-detect from live API title if available (overrides stale stored value)
+    const titleForSport = apiPos?.title || (p[6]||'').trim() || '';
+    const esporte = detEs(titleForSport) || (p[1]||'E-Sports').trim();
+
     return {
       date: isoDate,
       dateDisplay: dateStr,
-      esporte: (p[1]||'E-Sports').trim(),
+      esporte,
       tipster,
       casa: (p[3]||'Polymarket').trim(),
       parceiro: (p[4]||'').trim(),
