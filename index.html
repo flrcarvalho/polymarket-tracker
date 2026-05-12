@@ -336,6 +336,13 @@ table.poly-tbl td input.col-res{font-weight:700}
     <div class="page" id="page-resultados">
       <div class="page-header">
         <div><div class="page-title">Resultados</div><div class="page-sub">análise completa de performance</div></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div id="res-cotacao-info" style="font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace;text-align:right"></div>
+          <div style="display:flex;align-items:center;gap:0;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;overflow:hidden">
+            <button id="res-btn-usd" onclick="setResCurrency('usd')" style="padding:5px 12px;font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;border:none;cursor:pointer;transition:all .12s;background:var(--green);color:#000">USD</button>
+            <button id="res-btn-brl" onclick="setResCurrency('brl')" style="padding:5px 12px;font-size:11px;font-weight:600;font-family:'IBM Plex Mono',monospace;border:none;cursor:pointer;transition:all .12s;background:transparent;color:var(--text3)">BRL</button>
+          </div>
+        </div>
       </div>
       <!-- Filtros -->
       <div class="res-filters">
@@ -594,6 +601,10 @@ function addTipster() {
   saveTipsters(arr);
   inp.value = '';
   renderTipsterList();
+  // Refresh all open tables that show tipster dropdowns instantly
+  if (dadosAtivos.length) renderAtivasTable();
+  if (dadosFechados.length) renderFechadasTable();
+  renderPosicoesAll();
 }
 
 function deleteTipster(name) {
@@ -1111,6 +1122,31 @@ function initExtractors() {
 const HIST_KEY='poly_hist_v5', WALLET_KEY='poly_wallet_v5', BCB_KEY='bcb_v3';
 let dadosAtivos=[], dadosFechados=[], dolarHoje=null;
 let resChartPL=null, resChartDonut=null;
+let resCurrency = 'usd'; // 'usd' or 'brl'
+
+function setResCurrency(cur) {
+  resCurrency = cur;
+  const btnUsd = document.getElementById('res-btn-usd');
+  const btnBrl = document.getElementById('res-btn-brl');
+  if (btnUsd && btnBrl) {
+    if (cur === 'usd') {
+      btnUsd.style.background = 'var(--green)'; btnUsd.style.color = '#000'; btnUsd.style.fontWeight = '700';
+      btnBrl.style.background = 'transparent'; btnBrl.style.color = 'var(--text3)'; btnBrl.style.fontWeight = '600';
+    } else {
+      btnBrl.style.background = 'var(--blue)'; btnBrl.style.color = '#fff'; btnBrl.style.fontWeight = '700';
+      btnUsd.style.background = 'transparent'; btnUsd.style.color = 'var(--text3)'; btnUsd.style.fontWeight = '600';
+    }
+  }
+  const dolar = dolarHoje?.val || null;
+  const cotEl = document.getElementById('res-cotacao-info');
+  if (cotEl) {
+    if (cur === 'brl' && dolar) cotEl.textContent = `1 USD = R$ ${nf(dolar,4)} · ${dolarHoje.str}`;
+    else cotEl.textContent = '';
+  }
+  const rows = getResRows();
+  renderResKPIs(rows);
+  renderResPLChart(rows);
+}
 
 // Resultado filter state
 let resPeriod = 'tudo', resDateFrom='', resDateTo='';
@@ -1297,13 +1333,25 @@ function renderFechadasTable(){
   document.getElementById('cnt-fechadas').textContent=dadosFechados.length;
   if(!dadosFechados.length){el.innerHTML='<div class="empty-state">Nenhuma posição encerrada.</div>';return;}
   const assign=getTipsterAssign();
+  const tipsters=getTipsters();
   el.innerHTML=tw('<tr><th>Mercado</th><th>Data partida</th><th>Tipster</th><th>Res</th><th>Stake USD</th><th>P&L $</th><th>Odd</th></tr>',
     dadosFechados.map(p=>{
       const pnl=parseFloat(p.cashPnl||0),res=pnl>0?'W':'L';
       const cid=p.conditionId||'';
-      const tip=assign[cid]||'—';
-      return`<tr><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,60)}</td><td class="mono muted">${fmtDate(p,true)}</td><td style="font-size:11px;color:var(--text2)">${tip}</td><td><span class="badge badge-${res}">${res}</span></td><td class="mono">${fu(stakeUSD(p))}</td><td class="mono ${pnl>=0?'green':'red'}">${pnl>=0?'+':''}${fu(pnl)}</td><td class="mono amber">${nf(calcOdd(p),4)}</td></tr>`;
+      const selTip=assign[cid]||'';
+      const tipSel=`<select onchange="assignTipsterFechada(this,'${cid}')" style="background:var(--bg4);border:1px solid var(--border2);border-radius:4px;padding:3px 6px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer;min-width:90px"><option value="">— tipster —</option>${tipsters.map(t=>`<option value="${t}"${t===selTip?' selected':''}>${t}</option>`).join('')}</select>`;
+      return`<tr><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,60)}</td><td class="mono muted">${fmtDate(p,true)}</td><td>${tipSel}</td><td><span class="badge badge-${res}">${res}</span></td><td class="mono">${fu(stakeUSD(p))}</td><td class="mono ${pnl>=0?'green':'red'}">${pnl>=0?'+':''}${fu(pnl)}</td><td class="mono amber">${nf(calcOdd(p),4)}</td></tr>`;
     }).join(''));
+}
+
+function assignTipsterFechada(sel, conditionId) {
+  if (!conditionId) return;
+  const assign = getTipsterAssign();
+  if (sel.value) assign[conditionId] = sel.value;
+  else delete assign[conditionId];
+  saveTipsterAssign(assign);
+  // Update posicoes view if open
+  renderPosicoesAll();
 }
 
 let posFilter='all';
@@ -1418,6 +1466,11 @@ function getResRows() {
 
 function renderResultados() {
   const rows = getResRows();
+  // Update cotacao info label
+  const cotEl = document.getElementById('res-cotacao-info');
+  const dolar = dolarHoje?.val || null;
+  if (cotEl && resCurrency === 'brl' && dolar) cotEl.textContent = `1 USD = R$ ${nf(dolar,4)} · ${dolarHoje.str}`;
+  else if (cotEl) cotEl.textContent = '';
   renderResKPIs(rows);
   renderResPLChart(rows);
   renderResStreaks(rows);
@@ -1443,16 +1496,33 @@ function renderResKPIs(rows) {
   const stakeAvg = rows.length > 0 ? turnover / rows.length : 0;
   const tipAtivos = [...new Set(rows.map(r=>r.tipster).filter(Boolean))].length;
   const dolar = dolarHoje?.val || null;
+  const isBRL = resCurrency === 'brl';
+  const rate = (isBRL && dolar) ? dolar : 1;
+  const sym = isBRL ? 'R$' : '$';
+
+  function fv(usdVal) {
+    const v = usdVal * rate;
+    const abs = Math.abs(v).toFixed(2).replace('.',',');
+    return `${sym} ${abs}`;
+  }
+  function fvSigned(usdVal) {
+    const v = usdVal * rate;
+    const sign = v >= 0 ? '+' : '-';
+    const abs = Math.abs(v).toFixed(2).replace('.',',');
+    return `${sign}${sym} ${abs}`;
+  }
+
+  const cotacaoSub = isBRL && dolar ? `1 USD = R$ ${nf(dolar,4)}` : '';
 
   const kpis = [
-    { label: 'P/L (USD)', val: (totalPnl>=0?'+':'')+fu(totalPnl), cls: totalPnl>=0?'green':'red', sub: dolar ? (totalPnl>=0?'+ ':'')+fb(totalPnl*dolar) : '' },
-    { label: 'Turnover', val: fu(turnover), cls: 'blue', sub: rows.length + ' apostas' },
+    { label: `P/L (${isBRL?'BRL':'USD'})`, val: fvSigned(totalPnl), cls: totalPnl>=0?'green':'red', sub: cotacaoSub || (isBRL ? '' : (dolar ? `≈ ${fb(totalPnl*dolar)}` : '')) },
+    { label: `Turnover (${isBRL?'BRL':'USD'})`, val: fv(turnover), cls: 'blue', sub: rows.length + ' apostas' },
     { label: 'ROI', val: (roi>=0?'+':'')+roi.toFixed(2)+'%', cls: roi>=0?'green':'red', sub: enc.length + ' encerradas' },
     { label: 'Win Rate', val: wr.toFixed(1)+'%', cls: wr>=50?'green':wr>0?'amber':'red', sub: `W:${W} L:${L}` },
     { label: 'Odd Média Pond.', val: nf(oddAvg,4), cls: 'amber', sub: 'Σ(odd×stake)/Σ(stake)' },
-    { label: 'Stake Média', val: fu(stakeAvg), cls: '', sub: 'por aposta' },
-    { label: 'Tipsters Ativos', val: tipAtivos.toString(), cls: 'blue', sub: tipAtivos > 0 ? [...new Set(rows.map(r=>r.tipster).filter(Boolean))].slice(0,3).join(', ')+'...' : 'Nenhum' },
-    { label: 'USD/BRL', val: dolar ? 'R$ '+nf(dolar,4) : '—', cls: '', sub: dolarHoje?.str || '' },
+    { label: `Stake Média (${isBRL?'BRL':'USD'})`, val: fv(stakeAvg), cls: '', sub: 'por aposta' },
+    { label: 'Tipsters Ativos', val: tipAtivos.toString(), cls: 'blue', sub: tipAtivos > 0 ? [...new Set(rows.map(r=>r.tipster).filter(Boolean))].slice(0,3).join(', ')+(tipAtivos>3?'...':'') : 'Nenhum' },
+    { label: 'USD/BRL', val: dolar ? 'R$ '+nf(dolar,4) : '—', cls: '', sub: dolarHoje?.str || 'sem cotação' },
   ];
   el.innerHTML = kpis.map(k => `<div class="kpi"><div class="kpi-label">${k.label}</div><div class="kpi-val ${k.cls}">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
 }
@@ -1461,6 +1531,11 @@ function renderResPLChart(rows) {
   const canvas = document.getElementById('chartResPL');
   if (!canvas) return;
   if (resChartPL) { resChartPL.destroy(); resChartPL = null; }
+
+  const dolar = dolarHoje?.val || null;
+  const isBRL = resCurrency === 'brl';
+  const rate = (isBRL && dolar) ? dolar : 1;
+  const sym = isBRL ? 'R$' : '$';
 
   // Group by day
   const byDay = {};
@@ -1472,7 +1547,7 @@ function renderResPLChart(rows) {
   const days = Object.keys(byDay).sort();
   if (!days.length) return;
 
-  const dailyVals = days.map(d => parseFloat(byDay[d].toFixed(2)));
+  const dailyVals = days.map(d => parseFloat((byDay[d] * rate).toFixed(2)));
   let cum = 0;
   const cumVals = dailyVals.map(v => { cum += v; return parseFloat(cum.toFixed(2)); });
 
@@ -1487,6 +1562,15 @@ function renderResPLChart(rows) {
   const gridColor = isDark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.06)';
   const tickColor = isDark ? '#505060' : '#a0a0b8';
 
+  function fmtVal(v) {
+    const abs = Math.abs(v).toFixed(2).replace('.',',');
+    return `${v>=0?'+':'-'}${sym} ${abs}`;
+  }
+
+  // Update chart title label
+  const titleEl = canvas.closest('.card')?.querySelector('.card-title');
+  if (titleEl) titleEl.textContent = `P/L Acumulado + P/L Diário (${isBRL?'BRL':'USD'})`;
+
   resChartPL = new Chart(canvas, {
     type: 'bar',
     data: {
@@ -1499,13 +1583,13 @@ function renderResPLChart(rows) {
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { callbacks: {
-        label: ctx => (ctx.dataset.label||'')+': '+(ctx.raw>=0?'+':'')+fu(ctx.raw),
+        label: ctx => (ctx.dataset.label||'')+': '+fmtVal(ctx.raw),
         title: ctx => { const i=ctx[0].dataIndex; return days[i]?.split('-').reverse().join('/')||''; }
       }}},
       scales: {
         x: { ticks: { color: tickColor, font: { size: 9 }, maxRotation: 90, minRotation: 90, autoSkip: false, callback: (v,i) => labels[i]||null }, grid: { display: false }, border: { display: false }},
-        y: { ticks: { color: tickColor, font: { size: 10 }, callback: v => fu(v) }, grid: { color: gridColor }, border: { display: false }, position: 'left' },
-        y1: { ticks: { color: tickColor, font: { size: 10 }, callback: v => fu(v) }, grid: { display: false }, border: { display: false }, position: 'right' }
+        y: { ticks: { color: tickColor, font: { size: 10 }, callback: v => `${sym} ${Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})}` }, grid: { color: gridColor }, border: { display: false }, position: 'left' },
+        y1: { ticks: { color: tickColor, font: { size: 10 }, callback: v => `${sym} ${Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})}` }, grid: { display: false }, border: { display: false }, position: 'right' }
       }
     }
   });
@@ -1514,6 +1598,17 @@ function renderResPLChart(rows) {
 function renderResStreaks(rows) {
   const el = document.getElementById('res-streaks');
   if (!el) return;
+
+  const dolar = dolarHoje?.val || null;
+  const isBRL = resCurrency === 'brl';
+  const rate = (isBRL && dolar) ? dolar : 1;
+  const sym = isBRL ? 'R$' : '$';
+
+  function fvS(usdVal) {
+    const v = usdVal * rate;
+    const abs = Math.abs(v).toFixed(2).replace('.',',');
+    return `${v>=0?'+':'-'}${sym} ${abs}`;
+  }
 
   const byDay = {};
   rows.forEach(r => { if (!r.date) return; if (!byDay[r.date]) byDay[r.date] = 0; byDay[r.date] += r.lucro; });
@@ -1537,22 +1632,22 @@ function renderResStreaks(rows) {
     <div class="streak-card">
       <div class="streak-label" style="color:var(--green)">Sequência Positiva</div>
       <div class="streak-val ${posStreak>0?'green':'muted'}">${posStreak} dias</div>
-      <div class="streak-sub">${posStreak>0?'+ '+fu(posVal):'última: '+posStreak+' dias'}</div>
+      <div class="streak-sub">${posStreak>0?fvS(posVal):'última: '+posStreak+' dias'}</div>
     </div>
     <div class="streak-card">
       <div class="streak-label" style="color:var(--red)">Drawdown Atual</div>
       <div class="streak-val ${negStreak>0?'red':'muted'}">${negStreak} dias</div>
-      <div class="streak-sub">${negStreak>0?fu(negVal):'sem drawdown'}</div>
+      <div class="streak-sub">${negStreak>0?fvS(negVal):'sem drawdown'}</div>
     </div>
     <div class="streak-card">
       <div class="streak-label" style="color:var(--amber)">Topo Histórico</div>
-      <div class="streak-val green">${peak>0?(cum>=0?'+':'')+fu(peak):'—'}</div>
+      <div class="streak-val green">${peak>0?fvS(peak):'—'}</div>
       <div class="streak-sub">atingido em ${peakFmt}</div>
     </div>
     <div class="streak-card">
       <div class="streak-label">Distância do Topo</div>
-      <div class="streak-val ${dist<0?'red':'green'}">${dist<0?fu(dist):'+'+fu(0)}</div>
-      <div class="streak-sub">P/L atual: ${(cum>=0?'+':'')+fu(cum)}</div>
+      <div class="streak-val ${dist<0?'red':'green'}">${dist<0?fvS(dist):fvS(0)}</div>
+      <div class="streak-sub">P/L atual: ${fvS(cum)}</div>
     </div>`;
 }
 
