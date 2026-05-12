@@ -6,6 +6,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230c0c0f'/><rect x='5' y='18' width='5' height='9' rx='1.5' fill='%2300d68f'/><rect x='13' y='12' width='5' height='15' rx='1.5' fill='%2300d68f'/><rect x='21' y='6' width='5' height='21' rx='1.5' fill='%2300d68f'/><polyline points='7.5,17 15.5,11 23.5,5' stroke='%235b9cf6' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>"/>
 <title>FLRC · Polymarket Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 [data-theme="dark"]{--bg:#0c0c0f;--bg2:#111116;--bg3:#17171d;--bg4:#1e1e26;--bg5:#252530;--border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);--border3:rgba(255,255,255,.22);--text:#eeedf0;--text2:#8888a0;--text3:#50505f;--green:#00d68f;--green-dim:rgba(0,214,143,.1);--red:#f0506e;--red-dim:rgba(240,80,110,.1);--blue:#5b9cf6;--amber:#f0a030;--purple:#a78bfa;--teal:#2dd4bf;}
 [data-theme="light"]{--bg:#f2f2f5;--bg2:#fff;--bg3:#fff;--bg4:#f0f0f4;--bg5:#e4e4ea;--border:rgba(0,0,0,.08);--border2:rgba(0,0,0,.14);--border3:rgba(0,0,0,.22);--text:#0f0f18;--text2:#505068;--text3:#a0a0b8;--green:#00a86b;--green-dim:rgba(0,168,107,.08);--red:#d63050;--red-dim:rgba(214,48,80,.08);--blue:#2563eb;--amber:#d97706;--purple:#7c3aed;--teal:#0d9488;}
@@ -64,7 +65,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 .card-body{padding:.75rem 1rem}
 .tbl-wrap{overflow-x:auto}
 table.tbl{width:100%;border-collapse:collapse;font-size:12px}
-table.tbl th{padding:7px 10px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+table.tbl th{padding:7px 10px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace;white-space:nowrap;cursor:pointer}
+table.tbl th:hover{color:var(--text2)}
 table.tbl td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
 table.tbl tr:last-child td{border-bottom:none}
 table.tbl tr:hover td{background:rgba(255,255,255,.02)}
@@ -80,19 +82,13 @@ table.tbl tr:hover td{background:rgba(255,255,255,.02)}
 .btn-primary:hover{opacity:.85}
 .btn-danger{border-color:rgba(240,80,110,.3);color:var(--red)}
 .btn-danger:hover{border-color:var(--red);background:var(--red-dim)}
+.btn-sm{padding:3px 8px;font-size:11px}
 .csv-pre{background:var(--bg4);border:1px solid var(--border);border-radius:6px;padding:.75rem 1rem;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text2);line-height:1.7;max-height:420px;overflow-y:auto;overflow-x:auto;white-space:pre;tab-size:4}
-.guide-step{display:flex;gap:12px;margin-bottom:1rem;align-items:flex-start}
-.guide-n{width:22px;height:22px;border-radius:50%;background:var(--green-dim);color:var(--green);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'IBM Plex Mono',monospace}
-.guide-text{font-size:13px;line-height:1.6}
-.guide-sub{font-size:11px;color:var(--text3);margin-top:3px;font-family:'IBM Plex Mono',monospace}
-.code{background:var(--bg4);border:1px solid var(--border2);border-radius:4px;padding:1px 6px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--blue)}
 .empty-state{padding:2rem;text-align:center;color:var(--text3);font-size:12px;font-family:'IBM Plex Mono',monospace}
 .nav-logo{width:16px;height:16px;border-radius:3px;object-fit:contain;flex-shrink:0;opacity:.85}
 .nav-item.active .nav-logo{opacity:1}
 .nav-item:hover .nav-logo{opacity:1}
-.casa-logo-header{height:28px;width:auto;max-width:100px;object-fit:contain;border-radius:4px;filter:brightness(1.05)}
-[data-theme="dark"] .casa-logo-header{filter:brightness(1.1) drop-shadow(0 0 6px rgba(255,255,255,.08))}
-
+.casa-logo-header{height:28px;width:auto;max-width:100px;object-fit:contain;border-radius:4px}
 
 /* ── EXTRACTOR STYLES ── */
 .ext-wrap{display:flex;flex-direction:column;gap:1rem}
@@ -137,20 +133,82 @@ table.ext-tbl th{padding:6px 8px;text-align:left;font-size:9px;font-weight:700;t
 table.ext-tbl td{padding:0;border-bottom:1px solid var(--border);vertical-align:middle;background:var(--bg4)}
 table.ext-tbl tr:last-child td{border-bottom:none}
 table.ext-tbl tr:hover td{background:var(--bg5) !important}
-table.ext-tbl td input{width:100%;background:transparent !important;border:none;outline:none;padding:6px 8px;color:var(--text2);font-family:'IBM Plex Mono',monospace;font-size:11px;min-width:0;-webkit-appearance:none;appearance:none;box-shadow:none}
+table.ext-tbl td input{width:100%;background:transparent !important;border:none;outline:none;padding:6px 8px;color:var(--text2);font-family:'IBM Plex Mono',monospace;font-size:11px;min-width:0}
 table.ext-tbl td input:focus{background:rgba(0,214,143,.07) !important;color:var(--text)}
 table.ext-tbl td input.col-res{font-weight:700}
+table.ext-tbl td select{width:100%;background:transparent;border:none;outline:none;padding:6px 8px;color:var(--text2);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer}
+table.ext-tbl td select:focus{background:rgba(0,214,143,.07);color:var(--text)}
+
 /* Polymarket table */
 table.poly-tbl{width:100%;border-collapse:collapse;font-size:11px;font-family:'IBM Plex Mono',monospace;table-layout:fixed}
 table.poly-tbl th{padding:7px 10px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap;background:var(--bg3)}
 table.poly-tbl td{padding:0;border-bottom:1px solid var(--border);vertical-align:middle;background:var(--bg4)}
 table.poly-tbl tr:last-child td{border-bottom:none}
 table.poly-tbl tr:hover td{background:var(--bg5) !important}
-table.poly-tbl td input{width:100%;background:transparent !important;border:none;outline:none;padding:7px 10px;color:var(--text2);font-family:'IBM Plex Mono',monospace;font-size:11px;min-width:0;-webkit-appearance:none;appearance:none;box-shadow:none}
-table.poly-tbl td input:focus{background:rgba(0,214,143,.07) !important;color:var(--text)}
+table.poly-tbl td input,table.poly-tbl td select{width:100%;background:transparent !important;border:none;outline:none;padding:7px 10px;color:var(--text2);font-family:'IBM Plex Mono',monospace;font-size:11px;min-width:0;cursor:pointer}
+table.poly-tbl td input:focus,table.poly-tbl td select:focus{background:rgba(0,214,143,.07) !important;color:var(--text)}
 table.poly-tbl td input.col-res{font-weight:700}
 
+/* ── RESULTADOS PAGE ── */
+.res-filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:.75rem 1rem;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:1rem}
+.res-filter-label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-family:'IBM Plex Mono',monospace;margin-right:4px}
+.res-qbtn{font-size:11px;padding:4px 10px;background:transparent;border:1px solid var(--border2);color:var(--text3);border-radius:5px;cursor:pointer;font-family:'IBM Plex Mono',monospace;transition:all .1s;white-space:nowrap}
+.res-qbtn:hover,.res-qbtn.active{border-color:var(--green);color:var(--green);background:var(--green-dim)}
+.res-date-input{font-size:11px;padding:4px 8px;background:var(--bg4);border:1px solid var(--border2);color:var(--text2);border-radius:5px;font-family:'IBM Plex Mono',monospace;outline:none;width:120px}
+.res-date-input:focus{border-color:var(--green);color:var(--text)}
 
+/* Tipster cards */
+.tipster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:1rem}
+.tipster-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:1rem;transition:border-color .12s;border-top:2px solid transparent}
+.tipster-card:hover{border-color:var(--border2)}
+.tipster-card.pos-card{border-top-color:var(--green)}
+.tipster-card.neg-card{border-top-color:var(--red)}
+.tipster-card-header{display:flex;align-items:center;gap:8px;margin-bottom:.65rem}
+.tipster-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;font-family:'IBM Plex Mono',monospace}
+.tipster-name{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tipster-pl{font-size:20px;font-weight:700;font-family:'IBM Plex Mono',monospace;letter-spacing:-.02em;margin-bottom:4px}
+.tipster-meta{display:flex;gap:10px;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);flex-wrap:wrap}
+
+/* Calendar */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-header-day{text-align:center;font-size:9px;font-weight:700;color:var(--text3);font-family:'IBM Plex Mono',monospace;padding-bottom:4px}
+.cal-day{min-height:64px;border-radius:6px;padding:5px 6px;font-family:'IBM Plex Mono',monospace;font-size:11px;position:relative;transition:opacity .1s;cursor:default;border:1px solid transparent}
+.cal-day:hover{opacity:.85}
+.cal-day.empty-day{background:var(--bg4);opacity:.3}
+.cal-day.has-data{cursor:pointer}
+.cal-day.today-day{border-color:var(--blue) !important}
+.cal-day-num{font-size:10px;font-weight:600;margin-bottom:3px}
+.cal-day-pl{font-size:12px;font-weight:700;line-height:1.2}
+.cal-day-bets{font-size:9px;opacity:.7;margin-top:2px}
+
+/* Streak cards */
+.streak-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem}
+@media(max-width:900px){.streak-cards{grid-template-columns:repeat(2,1fr)}}
+.streak-card{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:.85rem 1rem}
+.streak-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem;font-family:'IBM Plex Mono',monospace}
+.streak-val{font-size:22px;font-weight:700;font-family:'IBM Plex Mono',monospace;letter-spacing:-.02em;line-height:1.1}
+.streak-sub{font-size:10px;color:var(--text3);margin-top:4px;font-family:'IBM Plex Mono',monospace}
+
+/* Sport cards */
+.sport-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:1rem}
+.sport-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;border-top:2px solid transparent;transition:border-color .12s}
+.sport-card.pos-card{border-top-color:var(--green)}
+.sport-card.neg-card{border-top-color:var(--red)}
+.sport-card-name{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--text);margin-bottom:.5rem}
+.sport-pl{font-size:18px;font-weight:700;font-family:'IBM Plex Mono',monospace;margin-bottom:4px}
+.sport-meta{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);line-height:1.7}
+
+/* Tipster manager */
+.tipster-list{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto}
+.tipster-list-item{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg4);border-radius:6px;border:1px solid var(--border)}
+.tipster-list-name{font-size:13px;color:var(--text);font-weight:600}
+
+/* Chart containers */
+.chart-wrap{position:relative;width:100%}
+
+/* Checkbox copiada */
+.check-copied{width:16px;height:16px;cursor:pointer;accent-color:var(--green)}
+.row-copied td{opacity:.45}
 </style>
 </head>
 <body>
@@ -169,24 +227,30 @@ table.poly-tbl td input.col-res{font-weight:700}
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Posições
     </div>
     <div class="nav-group">Dados</div>
+    <div class="nav-item" onclick="showPage('resultados',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Resultados
+    </div>
     <div class="nav-item" onclick="showPage('historico',this)">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Histórico
     </div>
     <div class="nav-item" onclick="showPage('csv',this)">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Exportar CSV
     </div>
+    <div class="nav-item" onclick="showPage('tipsters-mgr',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>Tipsters
+    </div>
     <div class="nav-group">Extratores</div>
     <div class="nav-item" onclick="showPage('ext-bet365',this)">
-      <img class="nav-logo" src="https://www.google.com/s2/favicons?domain=bet365.com\&sz=64" onerror="this.style.display='none'" alt=""/>Bet365
+      <img class="nav-logo" src="https://www.google.com/s2/favicons?domain=bet365.com&sz=64" onerror="this.style.display='none'" alt=""/>Bet365
     </div>
     <div class="nav-item" onclick="showPage('ext-betano',this)">
-      <img class="nav-logo" src="https://www.google.com/s2/favicons?domain=betano.com\&sz=64" onerror="this.style.display='none'" alt=""/>Betano
+      <img class="nav-logo" src="https://www.google.com/s2/favicons?domain=betano.com&sz=64" onerror="this.style.display='none'" alt=""/>Betano
     </div>
     <div class="nav-item" onclick="showPage('ext-betfair',this)">
-      <img class="nav-logo" src="https://www.google.com/s2/favicons?domain=betfair.com\&sz=64" onerror="this.style.display='none'" alt=""/>Betfair
+      <img class="nav-logo" src="https://www.google.com/s2/favicons?domain=betfair.com&sz=64" onerror="this.style.display='none'" alt=""/>Betfair
     </div>
     <div class="nav-item" onclick="showPage('ext-superbet',this)">
-      <img class="nav-logo" src="https://www.google.com/s2/favicons?domain=superbet.com.br\&sz=64" onerror="this.style.display='none'" alt=""/>Superbet
+      <img class="nav-logo" src="https://www.google.com/s2/favicons?domain=superbet.com.br&sz=64" onerror="this.style.display='none'" alt=""/>Superbet
     </div>
     <div class="nav-item" onclick="showPage('ext-generic',this)">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Genérica
@@ -268,6 +332,85 @@ table.poly-tbl td input.col-res{font-weight:700}
       <div class="card"><div class="card-body tbl-wrap" id="tbl-posicoes"><div class="empty-state">Sincronize para ver posições.</div></div></div>
     </div>
 
+    <!-- RESULTADOS -->
+    <div class="page" id="page-resultados">
+      <div class="page-header">
+        <div><div class="page-title">Resultados</div><div class="page-sub">análise completa de performance</div></div>
+      </div>
+      <!-- Filtros -->
+      <div class="res-filters">
+        <span class="res-filter-label">Período:</span>
+        <button class="res-qbtn" onclick="setResPeriod('hoje',this)">Hoje</button>
+        <button class="res-qbtn" onclick="setResPeriod('7d',this)">7 dias</button>
+        <button class="res-qbtn" onclick="setResPeriod('semana',this)">Semana atual</button>
+        <button class="res-qbtn" onclick="setResPeriod('mes',this)">Mês atual</button>
+        <button class="res-qbtn" onclick="setResPeriod('30d',this)">30 dias</button>
+        <button class="res-qbtn" onclick="setResPeriod('90d',this)">90 dias</button>
+        <button class="res-qbtn active" onclick="setResPeriod('tudo',this)">Tudo</button>
+        <span style="font-size:10px;color:var(--text3);margin:0 4px">|</span>
+        <input type="date" class="res-date-input" id="res-df" onchange="setResCustomDate()"/>
+        <span style="font-size:11px;color:var(--text3)">→</span>
+        <input type="date" class="res-date-input" id="res-dt" onchange="setResCustomDate()"/>
+      </div>
+      <!-- KPIs gerais -->
+      <div class="kpi-grid" id="res-kpis" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))"></div>
+      <!-- P/L Chart -->
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-header"><span class="card-title">P/L Acumulado + P/L Diário</span></div>
+        <div class="card-body" style="padding:.5rem 1rem 1rem">
+          <div class="chart-wrap" style="height:320px"><canvas id="chartResPL"></canvas></div>
+        </div>
+      </div>
+      <!-- Sequências -->
+      <div class="streak-cards" id="res-streaks"></div>
+      <!-- Calendário + Donut -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+        <div class="card">
+          <div class="card-header" style="justify-content:space-between">
+            <span class="card-title">Calendário — Resultados Diários</span>
+            <div style="display:flex;align-items:center;gap:6px">
+              <button onclick="calPrev()" style="background:var(--bg4);border:1px solid var(--border2);color:var(--text2);border-radius:4px;cursor:pointer;padding:2px 8px;font-size:13px">‹</button>
+              <select id="cal-month-sel" onchange="renderCalendar()" style="background:var(--bg4);border:1px solid var(--border2);color:var(--text);border-radius:4px;font-size:11px;padding:3px 6px;font-family:'IBM Plex Mono',monospace;cursor:pointer"></select>
+              <button onclick="calNext()" style="background:var(--bg4);border:1px solid var(--border2);color:var(--text2);border-radius:4px;cursor:pointer;padding:2px 8px;font-size:13px">›</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:.75rem">
+              <span id="cal-month-pl" style="font-size:22px;font-weight:700;font-family:'IBM Plex Mono',monospace">—</span>
+              <span id="cal-month-bets" style="font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace"></span>
+            </div>
+            <div id="cal-container"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Participação no Resultado Total</span></div>
+          <div class="card-body" style="display:flex;align-items:center;justify-content:center">
+            <div class="chart-wrap" style="height:280px;max-width:400px;width:100%"><canvas id="chartResDonut"></canvas></div>
+          </div>
+        </div>
+      </div>
+      <!-- Tipster Cards -->
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-header"><span class="card-title">Tipsters — Visão Geral</span><span id="res-tipster-count" style="font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace"></span></div>
+        <div class="card-body" style="padding:.75rem 1rem">
+          <div class="tipster-grid" id="res-tipster-cards"><div class="empty-state">Nenhum tipster cadastrado ainda. Adicione na aba Tipsters.</div></div>
+        </div>
+      </div>
+      <!-- Tabela Comparativo -->
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-header"><span class="card-title">Comparativo Geral — Tipsters</span></div>
+        <div class="card-body tbl-wrap" id="res-tipster-table"></div>
+      </div>
+      <!-- Esportes -->
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-header"><span class="card-title">Esportes — Performance por Modalidade</span></div>
+        <div class="card-body" style="padding:.75rem 1rem">
+          <div class="sport-grid" id="res-sport-cards"></div>
+          <div class="tbl-wrap" id="res-sport-table"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- HISTÓRICO -->
     <div class="page" id="page-historico">
       <div class="page-header">
@@ -287,12 +430,32 @@ table.poly-tbl td input.col-res{font-weight:700}
       <div class="card">
         <div class="card-header">
           <span class="card-title" id="csv-count-label">0 apostas</span>
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-primary" id="btnCopiar" onclick="copiarCSV()">⎘ Copiar</button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace">✓ = já copiadas</span>
+            <button class="btn btn-primary" id="btnCopiar" onclick="copiarCSV()">⎘ Copiar não-copiadas</button>
             <button class="btn" onclick="baixarCSV()">↓ Baixar</button>
+            <button class="btn btn-sm" onclick="marcarTodasCopiadas()" style="font-size:10px">Marcar tudo</button>
+            <button class="btn btn-sm btn-danger" onclick="desmarcarTodas()" style="font-size:10px">Desmarcar tudo</button>
           </div>
         </div>
         <div class="card-body"><div class="csv-pre" id="csvPre">Nenhum dado. Gere o CSV no Dashboard primeiro.</div></div>
+      </div>
+    </div>
+
+    <!-- TIPSTERS MANAGER -->
+    <div class="page" id="page-tipsters-mgr">
+      <div class="page-header"><div><div class="page-title">Tipsters</div><div class="page-sub">gerencie a lista de tipsters — usada em toda a plataforma</div></div></div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Adicionar Tipster</span></div>
+        <div class="card-body">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:1rem">
+            <input id="tipster-input" class="wallet-input" style="width:260px;font-size:13px;padding:7px 10px" placeholder="Nome do tipster..." onkeydown="if(event.key==='Enter')addTipster()"/>
+            <button class="btn btn-primary" onclick="addTipster()">+ Adicionar</button>
+          </div>
+          <div id="tipster-list-container">
+            <div class="tipster-list" id="tipster-list"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -300,7 +463,7 @@ table.poly-tbl td input.col-res{font-weight:700}
     <div class="page" id="page-ext-bet365">
       <div class="page-header">
         <div style="display:flex;align-items:center;gap:12px">
-          <img class="casa-logo-header" src="https://www.google.com/s2/favicons?domain=bet365.com\&sz=64" onerror="this.style.display='none'" alt="Bet365"/>
+          <img class="casa-logo-header" src="https://www.google.com/s2/favicons?domain=bet365.com&sz=64" onerror="this.style.display='none'" alt="Bet365"/>
           <div><div class="page-title">Bet365</div><div class="page-sub">envie prints do app/site · saída CSV MASTER 2026</div></div>
         </div>
       </div>
@@ -311,7 +474,7 @@ table.poly-tbl td input.col-res{font-weight:700}
     <div class="page" id="page-ext-betano">
       <div class="page-header">
         <div style="display:flex;align-items:center;gap:12px">
-          <img class="casa-logo-header" src="https://www.google.com/s2/favicons?domain=betano.com\&sz=64" onerror="this.style.display='none'" alt="Betano"/>
+          <img class="casa-logo-header" src="https://www.google.com/s2/favicons?domain=betano.com&sz=64" onerror="this.style.display='none'" alt="Betano"/>
           <div><div class="page-title">Betano</div><div class="page-sub">cole o texto dos bilhetes · saída CSV MASTER 2026</div></div>
         </div>
       </div>
@@ -322,7 +485,7 @@ table.poly-tbl td input.col-res{font-weight:700}
     <div class="page" id="page-ext-betfair">
       <div class="page-header">
         <div style="display:flex;align-items:center;gap:12px">
-          <img class="casa-logo-header" src="https://www.google.com/s2/favicons?domain=betfair.com\&sz=64" onerror="this.style.display='none'" alt="Betfair"/>
+          <img class="casa-logo-header" src="https://www.google.com/s2/favicons?domain=betfair.com&sz=64" onerror="this.style.display='none'" alt="Betfair"/>
           <div><div class="page-title">Betfair</div><div class="page-sub">cole o texto dos bilhetes · saída CSV MASTER 2026</div></div>
         </div>
       </div>
@@ -333,7 +496,7 @@ table.poly-tbl td input.col-res{font-weight:700}
     <div class="page" id="page-ext-superbet">
       <div class="page-header">
         <div style="display:flex;align-items:center;gap:12px">
-          <img class="casa-logo-header" src="https://www.google.com/s2/favicons?domain=superbet.com.br\&sz=64" onerror="this.style.display='none'" alt="Superbet"/>
+          <img class="casa-logo-header" src="https://www.google.com/s2/favicons?domain=superbet.com.br&sz=64" onerror="this.style.display='none'" alt="Superbet"/>
           <div><div class="page-title">Superbet</div><div class="page-sub">envie prints do app/site · saída CSV MASTER 2026</div></div>
         </div>
       </div>
@@ -369,7 +532,7 @@ table.poly-tbl td input.col-res{font-weight:700}
           </div>
         </div>
         <div class="card">
-          <div class="card-header"><span class="card-title">Instruções por Casa</span><span class="muted mono" style="font-size:9px">se preenchido, substitui o prompt padrão da casa</span></div>
+          <div class="card-header"><span class="card-title">Instruções por Casa</span></div>
           <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
             <div id="kb-field-inst_bet365"></div>
             <div id="kb-field-inst_betano"></div>
@@ -384,42 +547,16 @@ table.poly-tbl td input.col-res{font-weight:700}
     <!-- GUIA -->
     <div class="page" id="page-guia">
       <div class="page-header"><div><div class="page-title">Guia</div><div class="page-sub">como usar o tracker</div></div></div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem;margin-bottom:1rem">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem">
         <div class="card">
           <div class="card-header"><span class="card-title">Primeiros passos</span></div>
           <div class="card-body">
-            <div class="guide-step"><div class="guide-n">1</div><div><div class="guide-text">Copie seu wallet address no Polymarket</div><div class="guide-sub">Settings → Profile → Address</div></div></div>
-            <div class="guide-step"><div class="guide-n">2</div><div><div class="guide-text">Cole na sidebar e clique Sincronizar</div><div class="guide-sub">API pública — sem login ou senha</div></div></div>
-            <div class="guide-step"><div class="guide-n">3</div><div><div class="guide-text">Clique "Gerar CSV" no Dashboard</div><div class="guide-sub">Só novas apostas são adicionadas</div></div></div>
-            <div class="guide-step"><div class="guide-n">4</div><div><div class="guide-text">Para outras casas, use os Extratores</div><div class="guide-sub">Cole texto ou envie print — copie o CSV</div></div></div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-header"><span class="card-title">Extratores — input por casa</span></div>
-          <div class="card-body">
-            <table class="tbl">
-              <tr><th>Casa</th><th>Tipo de input</th></tr>
-              <tr><td><span class="badge badge-bet365">Bet365</span></td><td style="font-size:11px;color:var(--text2)">Imagem (print)</td></tr>
-              <tr><td><span class="badge badge-betano">Betano</span></td><td style="font-size:11px;color:var(--text2)">Texto colado</td></tr>
-              <tr><td><span class="badge badge-betfair">Betfair</span></td><td style="font-size:11px;color:var(--text2)">Texto colado</td></tr>
-              <tr><td><span class="badge badge-superbet">Superbet</span></td><td style="font-size:11px;color:var(--text2)">Imagem (print)</td></tr>
-              <tr><td><span class="badge badge-generic">Genérica</span></td><td style="font-size:11px;color:var(--text2)">Texto ou Imagem</td></tr>
-            </table>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-header"><span class="card-title">Mapeamento Polymarket</span></div>
-          <div class="card-body">
-            <table class="tbl">
-              <tr><th>Coluna CSV</th><th>Origem</th></tr>
-              <tr><td class="mono">Data</td><td style="font-size:11px"><span style="color:var(--green);font-weight:600">endDate</span> = data da partida/resolução</td></tr>
-              <tr><td class="mono">Esporte</td><td style="font-size:11px;color:var(--text2)">detectado pelo título</td></tr>
-              <tr><td class="mono">Parceiro</td><td style="font-size:11px;color:var(--text2)">Feca [Eu] (fixo)</td></tr>
-              <tr><td class="mono">Casa</td><td style="font-size:11px;color:var(--text2)">Polymarket (fixo)</td></tr>
-              <tr><td class="mono">Stake</td><td style="font-size:11px"><span style="color:var(--green);font-weight:600">BRL</span> = USDC × cotação BCB</td></tr>
-              <tr><td class="mono">Odd</td><td style="font-size:11px;color:var(--text2)">1 ÷ avgPrice (W: retorno/stake)</td></tr>
-              <tr><td class="mono">Resultado</td><td style="font-size:11px;color:var(--text2)">W / L / vazio (ativa)</td></tr>
-            </table>
+            <div style="display:flex;flex-direction:column;gap:.75rem">
+              <div style="display:flex;gap:10px"><div style="width:22px;height:22px;border-radius:50%;background:var(--green-dim);color:var(--green);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'IBM Plex Mono',monospace">1</div><div><div style="font-size:13px">Copie seu wallet address no Polymarket</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Settings → Profile → Address</div></div></div>
+              <div style="display:flex;gap:10px"><div style="width:22px;height:22px;border-radius:50%;background:var(--green-dim);color:var(--green);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'IBM Plex Mono',monospace">2</div><div><div style="font-size:13px">Cadastre seus Tipsters na aba Tipsters</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Os cards de análise são criados automaticamente</div></div></div>
+              <div style="display:flex;gap:10px"><div style="width:22px;height:22px;border-radius:50%;background:var(--green-dim);color:var(--green);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'IBM Plex Mono',monospace">3</div><div><div style="font-size:13px">Sincronize e gere o CSV no Dashboard</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Atribua tipsters nas posições ativas</div></div></div>
+              <div style="display:flex;gap:10px"><div style="width:22px;height:22px;border-radius:50%;background:var(--green-dim);color:var(--green);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'IBM Plex Mono',monospace">4</div><div><div style="font-size:13px">Veja a análise completa em Resultados</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Filtre por período e explore os gráficos</div></div></div>
+            </div>
           </div>
         </div>
       </div>
@@ -430,34 +567,111 @@ table.poly-tbl td input.col-res{font-weight:700}
 </div>
 
 <script>
-// ══════════════════════════════════════════════
-//  SYSTEM PROMPTS — REMOVIDOS
-//  Toda instrução vem exclusivamente da aba Bases
-// ══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+//  TIPSTERS MANAGER
+// ═══════════════════════════════════════════════════
+const TIPSTERS_KEY = 'flrc_tipsters_v1';
+const TIPSTER_ASSIGN_KEY = 'flrc_tipster_assign_v1'; // conditionId → tipster
 
-// ══════════════════════════════════════════════
+function getTipsters() {
+  try { return JSON.parse(localStorage.getItem(TIPSTERS_KEY) || '[]'); } catch(e) { return []; }
+}
+function saveTipsters(arr) { localStorage.setItem(TIPSTERS_KEY, JSON.stringify(arr)); }
+
+function getTipsterAssign() {
+  try { return JSON.parse(localStorage.getItem(TIPSTER_ASSIGN_KEY) || '{}'); } catch(e) { return {}; }
+}
+function saveTipsterAssign(obj) { localStorage.setItem(TIPSTER_ASSIGN_KEY, JSON.stringify(obj)); }
+
+function addTipster() {
+  const inp = document.getElementById('tipster-input');
+  const name = inp.value.trim();
+  if (!name) return;
+  const arr = getTipsters();
+  if (arr.includes(name)) { inp.value = ''; return; }
+  arr.push(name);
+  arr.sort((a,b) => a.localeCompare(b));
+  saveTipsters(arr);
+  inp.value = '';
+  renderTipsterList();
+}
+
+function deleteTipster(name) {
+  const arr = getTipsters().filter(t => t !== name);
+  saveTipsters(arr);
+  renderTipsterList();
+}
+
+function renderTipsterList() {
+  const list = document.getElementById('tipster-list');
+  if (!list) return;
+  const arr = getTipsters();
+  if (!arr.length) {
+    list.innerHTML = '<div class="empty-state">Nenhum tipster cadastrado. Adicione acima.</div>';
+    return;
+  }
+  list.innerHTML = arr.map(t => `
+    <div class="tipster-list-item">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:28px;height:28px;border-radius:50%;background:${tipsterColor(t)};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;font-family:'IBM Plex Mono',monospace">${tipsterInitials(t)}</div>
+        <span class="tipster-list-name">${t}</span>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteTipster('${t.replace(/'/g,"\\'")}')">✕</button>
+    </div>
+  `).join('');
+}
+
+function tipsterInitials(name) {
+  return name.split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+function tipsterColor(name) {
+  const colors = ['#00d68f','#5b9cf6','#f0a030','#a78bfa','#f0506e','#2dd4bf','#ffd700','#ff6b6b','#4ecdc4','#c084fc','#fb923c','#34d399'];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffffffff;
+  return colors[Math.abs(h) % colors.length];
+}
+
+function buildTipsterSelect(value = '') {
+  const arr = getTipsters();
+  const opts = ['<option value="">—</option>', ...arr.map(t => `<option value="${t}"${t===value?' selected':''}>${t}</option>`)].join('');
+  return `<select onchange="assignTipsterToRow(this)" style="width:100%;background:transparent;border:none;outline:none;padding:6px 8px;color:var(--text2);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer">${opts}</select>`;
+}
+
+// ═══════════════════════════════════════════════════
+//  COPIED STATE (CSV)
+// ═══════════════════════════════════════════════════
+const COPIED_KEY = 'flrc_copied_rows_v1';
+
+function getCopiedIds() {
+  try { return new Set(JSON.parse(localStorage.getItem(COPIED_KEY) || '[]')); } catch(e) { return new Set(); }
+}
+function saveCopiedIds(set) { localStorage.setItem(COPIED_KEY, JSON.stringify([...set])); }
+
+function marcarTodasCopiadas() {
+  const hist = JSON.parse(localStorage.getItem(HIST_KEY) || '{"ids":[],"linhas":[]}');
+  const s = getCopiedIds();
+  hist.ids.forEach(id => s.add(id));
+  saveCopiedIds(s);
+  renderCSVPage();
+}
+function desmarcarTodas() {
+  saveCopiedIds(new Set());
+  renderCSVPage();
+}
+
+// ═══════════════════════════════════════════════════
 //  EXTRACTOR ENGINE
-// ══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 const API_KEY_STORAGE = 'flrc_apikey_v1';
 
-function getApiKey() {
-  return localStorage.getItem(API_KEY_STORAGE) || '';
-}
-
-function toggleApiKeyVis() {
-  const inp = document.getElementById('apiKeyInput');
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-}
+function getApiKey() { return localStorage.getItem(API_KEY_STORAGE) || ''; }
+function toggleApiKeyVis() { const inp = document.getElementById('apiKeyInput'); inp.type = inp.type === 'password' ? 'text' : 'password'; }
 
 function initApiKey() {
   const inp = document.getElementById('apiKeyInput');
   const saved = getApiKey();
   if (saved) { inp.value = saved; updateApiKeyStatus(saved); }
-  inp.addEventListener('input', () => {
-    const v = inp.value.trim();
-    localStorage.setItem(API_KEY_STORAGE, v);
-    updateApiKeyStatus(v);
-  });
+  inp.addEventListener('input', () => { const v = inp.value.trim(); localStorage.setItem(API_KEY_STORAGE, v); updateApiKeyStatus(v); });
 }
 
 function updateApiKeyStatus(v) {
@@ -468,20 +682,11 @@ function updateApiKeyStatus(v) {
   else { el.textContent = '⚠ formato inválido'; el.style.color = 'var(--amber)'; }
 }
 
-// ══════════════════════════════════════════════
-//  KNOWLEDGE BASE — localStorage keys
-// ══════════════════════════════════════════════
 const KB_KEYS = {
-  master_descricao: 'kb_master_descricao',
-  master_resultado: 'kb_master_resultado',
-  master_esportes:  'kb_master_esportes',
-  master_apostas:   'kb_master_apostas',
-  master_csv:       'kb_master_csv',
-  inst_bet365:      'kb_inst_bet365',
-  inst_betano:      'kb_inst_betano',
-  inst_betfair:     'kb_inst_betfair',
-  inst_superbet:    'kb_inst_superbet',
-  inst_generic:     'kb_inst_generic',
+  master_descricao:'kb_master_descricao',master_resultado:'kb_master_resultado',
+  master_esportes:'kb_master_esportes',master_apostas:'kb_master_apostas',
+  master_csv:'kb_master_csv',inst_bet365:'kb_inst_bet365',inst_betano:'kb_inst_betano',
+  inst_betfair:'kb_inst_betfair',inst_superbet:'kb_inst_superbet',inst_generic:'kb_inst_generic',
 };
 
 function kbGet(key) { return localStorage.getItem(KB_KEYS[key]) || ''; }
@@ -490,28 +695,19 @@ function kbClear(key) { localStorage.removeItem(KB_KEYS[key]); }
 
 function buildSystemPrompt(casa, manualDate='') {
   const today = new Date().toLocaleDateString('pt-BR');
-  const dateNote = manualDate
-    ? `DATA DE REFERÊNCIA FORNECIDA PELO USUÁRIO: ${manualDate} — usar esta data quando o bilhete não tiver data visível.`
-    : `Data atual: ${today}`;
-
-  const instStored   = kbGet('inst_' + casa);
-  const descStored   = kbGet('master_descricao');
-  const resStored    = kbGet('master_resultado');
-  const espStored    = kbGet('master_esportes');
-  const apostStored  = kbGet('master_apostas');
-  const csvStored    = kbGet('master_csv');
-
-  if (!instStored && !descStored && !resStored && !espStored && !apostStored && !csvStored) {
+  const dateNote = manualDate ? `DATA DE REFERÊNCIA FORNECIDA PELO USUÁRIO: ${manualDate}` : `Data atual: ${today}`;
+  const instStored = kbGet('inst_' + casa), descStored = kbGet('master_descricao');
+  const resStored = kbGet('master_resultado'), espStored = kbGet('master_esportes');
+  const apostStored = kbGet('master_apostas'), csvStored = kbGet('master_csv');
+  if (!instStored && !descStored && !resStored && !espStored && !apostStored && !csvStored)
     throw new Error(`Aba Bases vazia para "${casa}". Cole as instruções na aba Bases antes de extrair.`);
-  }
-
   const parts = [];
-  if (instStored)  parts.push(instStored);
-  if (descStored)  parts.push(descStored);
-  if (resStored)   parts.push(resStored);
-  if (espStored)   parts.push(espStored);
+  if (instStored) parts.push(instStored);
+  if (descStored) parts.push(descStored);
+  if (resStored) parts.push(resStored);
+  if (espStored) parts.push(espStored);
   if (apostStored) parts.push(apostStored);
-  if (csvStored)   parts.push(csvStored);
+  if (csvStored) parts.push(csvStored);
   parts.push(dateNote);
   parts.push('REGRA DE SAÍDA:\n- Retornar APENAS linhas CSV separadas por ponto e vírgula\n- Sem texto, sem cabeçalho, sem markdown, sem ```\n- 10 colunas: Data;Esporte;Tipster;Casa;Parceiro;Aposta;Descrição;Stake;Odd;Resultado');
   return parts.join('\n\n---\n\n');
@@ -520,84 +716,49 @@ function buildSystemPrompt(casa, manualDate='') {
 async function runExtractor(casa, inputType, textVal, images, manualDate='') {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error('Configure sua Claude API Key na sidebar antes de extrair.');
-
-  // Build system prompt from knowledge base (stored) or fallback to hardcoded
   const sysPrompt = buildSystemPrompt(casa, manualDate);
-
-  const userText = inputType === 'text'
-    ? (manualDate ? `DATA DE REFERÊNCIA: ${manualDate}\n\n${textVal}` : textVal)
-    : (manualDate ? `DATA DE REFERÊNCIA: ${manualDate}\n\nExtrair bilhetes conforme instruções.` : 'Extrair bilhetes conforme instruções.');
-
+  const userText = inputType === 'text' ? (manualDate ? `DATA DE REFERÊNCIA: ${manualDate}\n\n${textVal}` : textVal) : (manualDate ? `DATA DE REFERÊNCIA: ${manualDate}\n\nExtrair bilhetes conforme instruções.` : 'Extrair bilhetes conforme instruções.');
   let messages;
   if (inputType === 'text') {
     messages = [{ role: 'user', content: userText }];
   } else {
-    const contentParts = images.map(b64obj => ({
-      type: 'image',
-      source: { type: 'base64', media_type: b64obj.mime || 'image/png', data: b64obj.data }
-    }));
+    const contentParts = images.map(b64obj => ({ type: 'image', source: { type: 'base64', media_type: b64obj.mime || 'image/png', data: b64obj.data } }));
     contentParts.push({ type: 'text', text: userText });
     messages = [{ role: 'user', content: contentParts }];
   }
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      // Opus for image extraction (superior vision), Sonnet for text
-      model: inputType === 'image' ? 'claude-opus-4-5' : 'claude-sonnet-4-5',
-      max_tokens: 4000,
-      system: sysPrompt,
-      messages
-    })
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({ model: inputType === 'image' ? 'claude-opus-4-5' : 'claude-sonnet-4-5', max_tokens: 4000, system: sysPrompt, messages })
   });
   const data = await resp.json();
   if (data.error) throw new Error(data.error.message);
   return data.content.filter(b => b.type === 'text').map(b => b.text).join('');
 }
 
-// ══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 //  BUILD EXTRACTOR UI
-// ══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 function buildExtUI(containerId, casa, inputMode, badgeClass, badgeLabel, logoUrl='') {
   const el = document.getElementById(containerId);
   if (!el) return;
-
   const showTabs = inputMode === 'both';
   let currentTab = inputMode === 'image' ? 'image' : 'text';
-
-  const logoHtml = logoUrl
-    ? `<img src="${logoUrl}" onerror="this.style.display='none'" style="height:20px;width:auto;border-radius:3px;object-fit:contain;opacity:.9" alt="${badgeLabel}"/>`
-    : `<span class="ext-casa-badge ${badgeClass}">${badgeLabel}</span>`;
-
+  const logoHtml = logoUrl ? `<img src="${logoUrl}" onerror="this.style.display='none'" style="height:20px;width:auto;border-radius:3px;object-fit:contain;opacity:.9" alt="${badgeLabel}"/>` : `<span class="ext-casa-badge ${badgeClass}">${badgeLabel}</span>`;
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem;flex-wrap:wrap">
       ${logoHtml}
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
         <label style="font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace;white-space:nowrap">Data (DD/MM/AAAA)</label>
-        <input id="date-${containerId}" type="text" placeholder="ex: ${new Date().toLocaleDateString('pt-BR')}"
-          style="background:var(--bg4);border:1px solid var(--border2);border-radius:4px;padding:4px 8px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;outline:none;width:120px"/>
-        <span style="font-size:9px;color:var(--text3);font-family:'IBM Plex Mono',monospace">opcional — usada se o bilhete não tiver data</span>
+        <input id="date-${containerId}" type="text" placeholder="ex: ${new Date().toLocaleDateString('pt-BR')}" style="background:var(--bg4);border:1px solid var(--border2);border-radius:4px;padding:4px 8px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;outline:none;width:120px"/>
+        <span style="font-size:9px;color:var(--text3);font-family:'IBM Plex Mono',monospace">opcional</span>
       </div>
     </div>
-    ${showTabs ? `
-    <div class="ext-both-tabs">
-      <button class="ext-tab ${currentTab==='text'?'active':''}" onclick="switchTab('${containerId}','text',this)">Texto</button>
-      <button class="ext-tab ${currentTab==='image'?'active':''}" onclick="switchTab('${containerId}','image',this)">Imagem</button>
-    </div>` : ''}
+    ${showTabs ? `<div class="ext-both-tabs"><button class="ext-tab ${currentTab==='text'?'active':''}" onclick="switchTab('${containerId}','text',this)">Texto</button><button class="ext-tab ${currentTab==='image'?'active':''}" onclick="switchTab('${containerId}','image',this)">Imagem</button></div>` : ''}
     <div class="ext-wrap">
       <div class="ext-input-area">
-        <div class="ext-input-header">
-          <span class="ext-input-label">Input</span>
-          <span class="ext-status" id="status-${containerId}"></span>
-        </div>
-        <div id="input-panel-${containerId}">
-          ${buildInputPanel(containerId, currentTab)}
-        </div>
+        <div class="ext-input-header"><span class="ext-input-label">Input</span><span class="ext-status" id="status-${containerId}"></span></div>
+        <div id="input-panel-${containerId}">${buildInputPanel(containerId, currentTab)}</div>
         <div class="ext-actions">
           <button class="btn btn-primary" onclick="extract('${containerId}','${casa}')">⚡ Extrair</button>
           <button class="btn" onclick="clearExtractor('${containerId}')">Limpar</button>
@@ -624,40 +785,29 @@ function buildExtUI(containerId, casa, inputMode, badgeClass, badgeLabel, logoUr
         <div id="output-tbl-wrap-${containerId}" class="ext-tbl-wrap">
           <div class="ext-output-pre empty" id="output-${containerId}">aguardando extração...</div>
         </div>
-        <div class="ext-output-actions">
-          <span class="muted mono" id="lines-${containerId}" style="font-size:10px"></span>
-        </div>
+        <div class="ext-output-actions"><span class="muted mono" id="lines-${containerId}" style="font-size:10px"></span></div>
       </div>
     </div>
-    <div id="img-preview-overlay-${containerId}" onclick="closePreview('${containerId}')"
-      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out">
-      <img id="img-preview-img-${containerId}" style="max-width:90vw;max-height:90vh;border-radius:6px;box-shadow:0 0 40px rgba(0,0,0,.8)"/>
+    <div id="img-preview-overlay-${containerId}" onclick="closePreview('${containerId}')" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out">
+      <img id="img-preview-img-${containerId}" style="max-width:90vw;max-height:90vh;border-radius:6px"/>
     </div>`;
-
-  el._tab = currentTab;
-  el._inputMode = inputMode;
-  el._images = [];
+  el._tab = currentTab; el._inputMode = inputMode; el._images = [];
   bindDropZone(containerId);
 }
 
 function buildInputPanel(containerId, tab) {
-  if (tab === 'text') {
-    return `<textarea class="ext-textarea" id="textarea-${containerId}" placeholder="Cole aqui o texto do bilhete..."></textarea>`;
-  } else {
-    return `
-      <div class="ext-drop-zone" id="drop-${containerId}" onclick="document.getElementById('file-${containerId}').click()">
-        <div class="ext-drop-icon">📎</div>
-        <div class="ext-drop-text"><strong>Clique, arraste ou Ctrl+V</strong>PNG, JPG, WEBP — Cole prints direto aqui</div>
-        <input type="file" class="ext-file-hidden" id="file-${containerId}" accept="image/*" multiple onchange="handleFiles('${containerId}',this.files)"/>
-      </div>
-      <div class="ext-thumb-grid" id="thumbs-${containerId}"></div>`;
-  }
+  if (tab === 'text') return `<textarea class="ext-textarea" id="textarea-${containerId}" placeholder="Cole aqui o texto do bilhete..."></textarea>`;
+  return `<div class="ext-drop-zone" id="drop-${containerId}" onclick="document.getElementById('file-${containerId}').click()">
+    <div class="ext-drop-icon">📎</div>
+    <div class="ext-drop-text"><strong>Clique, arraste ou Ctrl+V</strong>PNG, JPG, WEBP — Cole prints direto aqui</div>
+    <input type="file" class="ext-file-hidden" id="file-${containerId}" accept="image/*" multiple onchange="handleFiles('${containerId}',this.files)"/>
+  </div>
+  <div class="ext-thumb-grid" id="thumbs-${containerId}"></div>`;
 }
 
 function switchTab(containerId, tab, btn) {
   const el = document.getElementById(containerId);
-  el._tab = tab;
-  el._images = [];
+  el._tab = tab; el._images = [];
   document.querySelectorAll(`#${containerId} .ext-tab`).forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById(`input-panel-${containerId}`).innerHTML = buildInputPanel(containerId, tab);
@@ -680,13 +830,9 @@ function handleFiles(containerId, files) {
     reader.onload = ev => {
       const img = new Image();
       img.onload = () => {
-        // Render at full native resolution — no compression, no resize
         const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        // PNG = lossless, preserves every pixel exactly as captured
+        canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0);
         const dataUrl = canvas.toDataURL('image/png');
         const b64 = dataUrl.split(',')[1];
         const idx = el._images.length;
@@ -700,8 +846,6 @@ function handleFiles(containerId, files) {
 }
 
 function enablePaste(containerId) {
-  // containerId examples: 'ext-bet365-ui', 'ext-superbet-ui', 'ext-generic-ui'
-  // page IDs: 'page-ext-bet365', 'page-ext-superbet', 'page-ext-generic'
   const pageId = 'page-' + containerId.replace('-ui', '');
   document.addEventListener('paste', ev => {
     const page = document.getElementById(pageId);
@@ -709,16 +853,10 @@ function enablePaste(containerId) {
     const items = ev.clipboardData?.items;
     if (!items) return;
     const imageFiles = [];
-    for (const item of items) {
-      if (item.type.startsWith('image/')) imageFiles.push(item.getAsFile());
-    }
+    for (const item of items) { if (item.type.startsWith('image/')) imageFiles.push(item.getAsFile()); }
     if (!imageFiles.length) return;
-    // switch to image tab if in 'both' mode and currently on text tab
     const el = document.getElementById(containerId);
-    if (el && el._tab === 'text') {
-      const tabs = el.querySelectorAll('.ext-tab');
-      if (tabs.length >= 2) switchTab(containerId, 'image', tabs[1]);
-    }
+    if (el && el._tab === 'text') { const tabs = el.querySelectorAll('.ext-tab'); if (tabs.length >= 2) switchTab(containerId, 'image', tabs[1]); }
     handleFiles(containerId, imageFiles);
   });
 }
@@ -726,11 +864,8 @@ function enablePaste(containerId) {
 function addThumb(containerId, src, idx) {
   const grid = document.getElementById(`thumbs-${containerId}`);
   if (!grid) return;
-  const div = document.createElement('div');
-  div.className = 'ext-thumb';
-  div.id = `thumb-${containerId}-${idx}`;
-  div.innerHTML = `<img src="${src}" onclick="openPreview('${containerId}','${src}')" style="cursor:zoom-in" title="Clique para ampliar"/>
-    <div class="ext-thumb-rm" onclick="removeThumb('${containerId}',${idx})">×</div>`;
+  const div = document.createElement('div'); div.className = 'ext-thumb'; div.id = `thumb-${containerId}-${idx}`;
+  div.innerHTML = `<img src="${src}" onclick="openPreview('${containerId}','${src}')" style="cursor:zoom-in"/><div class="ext-thumb-rm" onclick="removeThumb('${containerId}',${idx})">×</div>`;
   grid.appendChild(div);
 }
 
@@ -738,13 +873,68 @@ function openPreview(containerId, src) {
   const overlay = document.getElementById(`img-preview-overlay-${containerId}`);
   const img = document.getElementById(`img-preview-img-${containerId}`);
   if (!overlay || !img) return;
-  img.src = src;
-  overlay.style.display = 'flex';
+  img.src = src; overlay.style.display = 'flex';
+}
+function closePreview(containerId) { const o = document.getElementById(`img-preview-overlay-${containerId}`); if(o) o.style.display='none'; }
+
+const COLS = ['Data','Esporte','Tipster','Casa','Parceiro','Aposta','Descrição','Stake','Odd','Resultado'];
+const COL_WIDTHS = ['90px','80px','90px','80px','80px','100px','auto','70px','70px','80px'];
+
+function renderExtTable(containerId, lines) {
+  const wrap = document.getElementById(`output-tbl-wrap-${containerId}`);
+  if (!wrap) return;
+  const rows = lines.map(l => l.split(';'));
+  const tipsters = getTipsters();
+  const tipsterOpts = ['<option value="">—</option>', ...tipsters.map(t=>`<option value="${t}">${t}</option>`)].join('');
+  const colDefs = COLS.map((c,i) => `<col style="width:${COL_WIDTHS[i]}">`).join('');
+  const thead = COLS.map((c,i) => `<th style="width:${COL_WIDTHS[i]}">${c}</th>`).join('');
+  const tbody = rows.map((row, ri) => {
+    const cells = COLS.map((_, ci) => {
+      const val = (row[ci] || '').trim();
+      if (ci === 2) {
+        const opts = `<option value="">—</option>${tipsters.map(t=>`<option value="${t}"${t===val?' selected':''}>${t}</option>`).join('')}`;
+        return `<td><select data-row="${ri}" data-col="${ci}" onchange="onCellEdit('${containerId}',this)" style="width:100%;background:transparent;border:none;outline:none;padding:6px 8px;color:var(--text2);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer">${opts}</select></td>`;
+      }
+      const isRes = ci === 9;
+      const cls = isRes ? ' class="col-res"' : '';
+      return `<td><input${cls} value="${val.replace(/"/g,'&quot;')}" data-row="${ri}" data-col="${ci}" oninput="onCellEdit('${containerId}',this)"/></td>`;
+    }).join('');
+    return `<tr>${cells}</tr>`;
+  }).join('');
+  wrap.innerHTML = `<table class="ext-tbl"><colgroup>${colDefs}</colgroup><thead><tr>${thead}</tr></thead><tbody id="ext-tbody-${containerId}">${tbody}</tbody></table>`;
 }
 
-function closePreview(containerId) {
-  const overlay = document.getElementById(`img-preview-overlay-${containerId}`);
-  if (overlay) overlay.style.display = 'none';
+function onCellEdit(containerId, input) {
+  if (parseInt(input.dataset.col) === 9) input.className = 'col-res';
+}
+
+function getTableCSV(containerId) {
+  const tbody = document.getElementById(`ext-tbody-${containerId}`);
+  if (!tbody) return '';
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  return rows.map(tr => {
+    const inputs = Array.from(tr.querySelectorAll('input,select'));
+    return inputs.map(i => i.value).join(';');
+  }).join('\n');
+}
+
+function adicionarLinha(containerId) {
+  const tbody = document.getElementById(`ext-tbody-${containerId}`);
+  if (!tbody) return;
+  const ri = tbody.querySelectorAll('tr').length;
+  const tipsters = getTipsters();
+  const cells = COLS.map((_, ci) => {
+    if (ci === 2) {
+      const opts = `<option value="">—</option>${tipsters.map(t=>`<option value="${t}">${t}</option>`).join('')}`;
+      return `<td><select data-row="${ri}" data-col="${ci}" onchange="onCellEdit('${containerId}',this)" style="width:100%;background:transparent;border:none;outline:none;padding:6px 8px;color:var(--text2);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer">${opts}</select></td>`;
+    }
+    const cls = ci===9?' class="col-res"':'';
+    return `<td><input${cls} value="" data-row="${ri}" data-col="${ci}" oninput="onCellEdit('${containerId}',this)"/></td>`;
+  }).join('');
+  const tr = document.createElement('tr'); tr.innerHTML = cells; tbody.appendChild(tr);
+  tr.querySelector('input')?.focus();
+  const linesEl = document.getElementById(`lines-${containerId}`);
+  if (linesEl) linesEl.textContent = `${tbody.querySelectorAll('tr').length} linhas`;
 }
 
 function baixarSaida(containerId, casa) {
@@ -754,16 +944,14 @@ function baixarSaida(containerId, casa) {
   const tsv = [header, ...csv.split('\n').map(l=>l.split(';').join('\t'))].join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([tsv],{type:'text/tab-separated-values;charset=utf-8;'}));
-  a.download = `${casa}_${new Date().toISOString().slice(0,10)}.tsv`;
-  a.click();
+  a.download = `${casa}_${new Date().toISOString().slice(0,10)}.tsv`; a.click();
 }
 
 function copiarTSV(containerId) {
-  // TSV sem cabeçalho — tabs como separador
   const tbody = document.getElementById(`ext-tbody-${containerId}`);
   if (!tbody) return;
   const rows = Array.from(tbody.querySelectorAll('tr'));
-  const tsv = rows.map(tr => Array.from(tr.querySelectorAll('input')).map(i => i.value).join('\t')).join('\n');
+  const tsv = rows.map(tr => Array.from(tr.querySelectorAll('input,select')).map(i => i.value).join('\t')).join('\n');
   if (!tsv) return;
   navigator.clipboard.writeText(tsv).then(() => {
     const area = document.getElementById(`output-tbl-wrap-${containerId}`)?.closest('.ext-output-area');
@@ -778,13 +966,12 @@ function bulkFill(containerId, colIdx, inputId) {
   const tbody = document.getElementById(`ext-tbody-${containerId}`);
   if (!tbody) return;
   tbody.querySelectorAll('tr').forEach(tr => {
-    const inp = tr.querySelectorAll('input')[colIdx];
-    if (inp) inp.value = val;
+    const inps = tr.querySelectorAll('input,select');
+    if (inps[colIdx]) inps[colIdx].value = val;
   });
 }
 
 function copiarSaida(containerId) {
-  // CSV sem cabeçalho — para colar em planilha existente
   const csv = getTableCSV(containerId);
   if (!csv) return;
   navigator.clipboard.writeText(csv).then(() => {
@@ -793,77 +980,6 @@ function copiarSaida(containerId) {
     const btn = Array.from(area.querySelectorAll('button')).find(b => b.textContent.includes('CSV'));
     if (btn) { const o=btn.textContent; btn.textContent='✓ Copiado!'; setTimeout(()=>btn.textContent=o,2000); }
   });
-}
-const COLS = ['Data','Esporte','Tipster','Casa','Parceiro','Aposta','Descrição','Stake','Odd','Resultado'];
-const COL_WIDTHS = ['90px','80px','70px','80px','80px','100px','auto','70px','70px','80px'];
-
-function renderExtTable(containerId, lines) {
-  const wrap = document.getElementById(`output-tbl-wrap-${containerId}`);
-  if (!wrap) return;
-
-  // Parse CSV lines into rows
-  const rows = lines.map(l => l.split(';'));
-
-  const colDefs = COLS.map((c,i) => `<col style="width:${COL_WIDTHS[i]}">`).join('');
-  const thead = COLS.map((c,i) =>
-    `<th style="width:${COL_WIDTHS[i]}">${c}</th>`
-  ).join('');
-
-  const tbody = rows.map((row, ri) => {
-    const cells = COLS.map((_, ci) => {
-      const val = (row[ci] || '').trim();
-      const isRes = ci === 9;
-      const cls = isRes ? ' class="col-res"' : '';
-      return `<td><input${cls} value="${val.replace(/"/g,'&quot;')}" data-row="${ri}" data-col="${ci}" oninput="onCellEdit('${containerId}',this)"/></td>`;
-    }).join('');
-    return `<tr>${cells}</tr>`;
-  }).join('');
-
-  wrap.innerHTML = `<table class="ext-tbl"><colgroup>${colDefs}</colgroup><thead><tr>${thead}</tr></thead><tbody id="ext-tbody-${containerId}">${tbody}</tbody></table>`;
-}
-
-function onCellEdit(containerId, input) {
-  // Update result cell color dynamically
-  if (parseInt(input.dataset.col) === 9) {
-    input.className = 'col-res';
-  }
-}
-
-function getTableCSV(containerId) {
-  const tbody = document.getElementById(`ext-tbody-${containerId}`);
-  if (!tbody) return '';
-  const rows = Array.from(tbody.querySelectorAll('tr'));
-  return rows.map(tr => {
-    const inputs = Array.from(tr.querySelectorAll('input'));
-    return inputs.map(i => i.value).join(';');
-  }).join('\n');
-}
-
-function adicionarLinha(containerId) {
-  const tbody = document.getElementById(`ext-tbody-${containerId}`);
-  if (!tbody) return;
-  const ri = tbody.querySelectorAll('tr').length;
-  const cells = COLS.map((_, ci) => {
-    const cls = ci===9?' class="col-res"':'';
-    return `<td><input${cls} value="" data-row="${ri}" data-col="${ci}" oninput="onCellEdit('${containerId}',this)"/></td>`;
-  }).join('');
-  const tr = document.createElement('tr');
-  tr.innerHTML = cells;
-  tbody.appendChild(tr);
-  tr.querySelector('input').focus();
-  const linesEl = document.getElementById(`lines-${containerId}`);
-  if (linesEl) linesEl.textContent = `${tbody.querySelectorAll('tr').length} linhas`;
-}
-
-function baixarSaida(containerId, casa) {
-  const csv = getTableCSV(containerId);
-  if (!csv) return;
-  const header = COLS.join('\t');
-  const tsv = [header, ...csv.split('\n').map(l=>l.split(';').join('\t'))].join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([tsv],{type:'text/tab-separated-values;charset=utf-8;'}));
-  a.download = `${casa}_${new Date().toISOString().slice(0,10)}.tsv`;
-  a.click();
 }
 
 function clearExtractor(containerId) {
@@ -880,6 +996,7 @@ function clearExtractor(containerId) {
   const lines = document.getElementById(`lines-${containerId}`);
   if (lines) lines.textContent='';
 }
+
 function removeThumb(containerId, idx) {
   const el = document.getElementById(containerId);
   if (el._images) el._images.splice(idx, 1);
@@ -892,25 +1009,18 @@ async function extract(containerId, casa) {
   const tab = el._tab || 'text';
   const statusEl = document.getElementById(`status-${containerId}`);
   const linesEl = document.getElementById(`lines-${containerId}`);
-
-  let textVal = '';
-  let images = [];
-
+  let textVal = '', images = [];
   if (tab === 'text') {
     const ta = document.getElementById(`textarea-${containerId}`);
     textVal = ta ? ta.value.trim() : '';
-    if (!textVal) { statusEl.className = 'ext-status err'; statusEl.textContent = 'texto vazio'; return; }
+    if (!textVal) { statusEl.className='ext-status err'; statusEl.textContent='texto vazio'; return; }
   } else {
     images = el._images || [];
-    if (!images.length) { statusEl.className = 'ext-status err'; statusEl.textContent = 'nenhuma imagem'; return; }
+    if (!images.length) { statusEl.className='ext-status err'; statusEl.textContent='nenhuma imagem'; return; }
   }
-
-  statusEl.className = 'ext-status running';
-  statusEl.textContent = '⟳ extraindo...';
-  // Show processing state in wrap
+  statusEl.className = 'ext-status running'; statusEl.textContent = '⟳ extraindo...';
   const tblWrap = document.getElementById(`output-tbl-wrap-${containerId}`);
   if (tblWrap) tblWrap.innerHTML = `<div class="ext-output-pre empty" style="display:flex">processando...</div>`;
-
   try {
     const dateInput = document.getElementById(`date-${containerId}`);
     const manualDate = dateInput ? dateInput.value.trim() : '';
@@ -920,52 +1030,29 @@ async function extract(containerId, casa) {
       const t = l.trim();
       if (!t) return false;
       if (t.startsWith('```') || t.startsWith('#')) return false;
-      // Accept both TAB-separated (new MASTER) and semicolon-separated lines
-      const tabCols = t.split('\t').length;
-      const semiCols = t.split(';').length;
+      const tabCols = t.split('\t').length, semiCols = t.split(';').length;
       return tabCols >= 9 || semiCols >= 9;
     });
-
-    // Normalize all lines to semicolon-separated for internal table use
-    lines = lines.map(l => {
-      // If line has tabs and not semicolons, convert to semicolons
-      if (l.includes('\t') && !l.includes(';')) {
-        return l.split('\t').join(';');
-      }
-      return l;
-    });
-
-    if (lines.length) {
-      renderExtTable(containerId, lines);
-    } else {
-      if (tblWrap) tblWrap.innerHTML = `<div class="ext-output-pre empty" style="display:flex">Nenhuma linha CSV válida extraída.</div>`;
-    }
-
+    lines = lines.map(l => l.includes('\t') && !l.includes(';') ? l.split('\t').join(';') : l);
+    if (lines.length) { renderExtTable(containerId, lines); }
+    else { if (tblWrap) tblWrap.innerHTML = `<div class="ext-output-pre empty" style="display:flex">Nenhuma linha CSV válida extraída.</div>`; }
     statusEl.className = lines.length ? 'ext-status ok' : 'ext-status err';
     statusEl.textContent = lines.length ? `✓ ${lines.length} linha${lines.length!==1?'s':''}` : '⚠ sem linhas válidas';
     linesEl.textContent = lines.length ? `${lines.length} aposta${lines.length!==1?'s':''} extraída${lines.length!==1?'s':''}` : '';
-  } catch (e) {
+  } catch(e) {
     if (tblWrap) tblWrap.innerHTML = `<div class="ext-output-pre empty" style="display:flex">Erro: ${e.message}</div>`;
-    statusEl.className = 'ext-status err';
-    statusEl.textContent = '✗ ' + e.message.substring(0,60);
+    statusEl.className = 'ext-status err'; statusEl.textContent = '✗ ' + e.message.substring(0,60);
   }
 }
 
-
-// ══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 //  KNOWLEDGE BASE UI
-// ══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 const KB_LABELS = {
-  master_descricao: 'MASTER_DESCRICAO — Padrão de Descrição',
-  master_resultado: 'MASTER_RESULTADO — Regras de Resultado e Odd',
-  master_esportes:  'MASTER_ESPORTES — Normalização de Esportes',
-  master_apostas:   'MASTER_APOSTAS — Categorias de Apostas',
-  master_csv:       'MASTER_CSV — Estrutura do CSV',
-  inst_bet365:      'Instruções Bet365',
-  inst_betano:      'Instruções Betano',
-  inst_betfair:     'Instruções Betfair',
-  inst_superbet:    'Instruções Superbet',
-  inst_generic:     'Instruções Genérica',
+  master_descricao:'MASTER_DESCRICAO',master_resultado:'MASTER_RESULTADO',
+  master_esportes:'MASTER_ESPORTES',master_apostas:'MASTER_APOSTAS',master_csv:'MASTER_CSV',
+  inst_bet365:'Instruções Bet365',inst_betano:'Instruções Betano',inst_betfair:'Instruções Betfair',
+  inst_superbet:'Instruções Superbet',inst_generic:'Instruções Genérica',
 };
 
 function initKbPage() {
@@ -973,16 +1060,12 @@ function initKbPage() {
     const container = document.getElementById(`kb-field-${key}`);
     if (!container) return;
     const saved = kbGet(key);
-    const statusColor = saved ? 'var(--green)' : 'var(--text3)';
-    const statusText = saved ? `✓ ${saved.length} chars salvos` : 'usando padrão interno';
     container.innerHTML = `
       <div style="margin-bottom:.35rem;display:flex;align-items:center;justify-content:space-between">
         <label style="font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">${KB_LABELS[key]}</label>
-        <span id="kb-status-${key}" style="font-size:9px;font-family:'IBM Plex Mono',monospace;color:${statusColor}">${statusText}</span>
+        <span id="kb-status-${key}" style="font-size:9px;font-family:'IBM Plex Mono',monospace;color:${saved?'var(--green)':'var(--text3)'}">${saved?`✓ ${saved.length} chars`:'vazio'}</span>
       </div>
-      <textarea id="kb-ta-${key}"
-        style="width:100%;min-height:120px;background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:.6rem .75rem;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:10px;line-height:1.6;outline:none;resize:vertical"
-        placeholder="Cole aqui o conteúdo da base...">${saved}</textarea>
+      <textarea id="kb-ta-${key}" style="width:100%;min-height:120px;background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:.6rem .75rem;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:10px;line-height:1.6;outline:none;resize:vertical" placeholder="Cole aqui o conteúdo da base...">${saved}</textarea>
       <div style="display:flex;gap:6px;margin-top:.35rem">
         <button class="btn btn-primary" style="font-size:11px;padding:3px 10px" onclick="kbSaveOne('${key}')">Salvar</button>
         <button class="btn btn-danger" style="font-size:11px;padding:3px 10px" onclick="kbClearOne('${key}')">Limpar</button>
@@ -991,125 +1074,107 @@ function initKbPage() {
 }
 
 function kbSaveOne(key) {
-  const ta = document.getElementById(`kb-ta-${key}`);
-  const st = document.getElementById(`kb-status-${key}`);
+  const ta = document.getElementById(`kb-ta-${key}`), st = document.getElementById(`kb-status-${key}`);
   if (!ta) return;
   kbSet(key, ta.value.trim());
-  if (st) { st.textContent = `✓ ${ta.value.trim().length} chars salvos`; st.style.color='var(--green)'; }
+  if (st) { st.textContent=`✓ ${ta.value.trim().length} chars`; st.style.color='var(--green)'; }
 }
-
 function kbClearOne(key) {
   kbClear(key);
-  const ta = document.getElementById(`kb-ta-${key}`);
-  const st = document.getElementById(`kb-status-${key}`);
-  if (ta) ta.value = '';
-  if (st) { st.textContent = 'usando padrão interno'; st.style.color='var(--text3)'; }
+  const ta = document.getElementById(`kb-ta-${key}`), st = document.getElementById(`kb-status-${key}`);
+  if (ta) ta.value=''; if (st) { st.textContent='vazio'; st.style.color='var(--text3)'; }
 }
+function kbSaveAll() { Object.keys(KB_LABELS).forEach(k => kbSaveOne(k)); }
+function kbClearAll() { if (!confirm('Limpar todas as bases?')) return; Object.keys(KB_LABELS).forEach(k => kbClearOne(k)); }
 
-function kbSaveAll() {
-  Object.keys(KB_LABELS).forEach(key => kbSaveOne(key));
-}
-
-function kbClearAll() {
-  if (!confirm('Limpar todas as bases? Os extratores voltarão a usar os prompts internos.')) return;
-  Object.keys(KB_LABELS).forEach(key => kbClearOne(key));
-}
-
-// ══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 //  INIT EXTRACTORS
-// ══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 function initExtractors() {
   const logos = {
-    bet365:   'https://www.google.com/s2/favicons?domain=bet365.com&sz=64',
-    betano:   'https://www.google.com/s2/favicons?domain=betano.com&sz=64',
-    betfair:  'https://www.google.com/s2/favicons?domain=betfair.com&sz=64',
-    superbet: 'https://www.google.com/s2/favicons?domain=superbet.com.br&sz=64',
+    bet365:'https://www.google.com/s2/favicons?domain=bet365.com&sz=64',
+    betano:'https://www.google.com/s2/favicons?domain=betano.com&sz=64',
+    betfair:'https://www.google.com/s2/favicons?domain=betfair.com&sz=64',
+    superbet:'https://www.google.com/s2/favicons?domain=superbet.com.br&sz=64',
   };
-  buildExtUI('ext-bet365-ui',  'bet365',  'image', 'badge-bet365',  'Bet365',  logos.bet365);
-  buildExtUI('ext-betano-ui',  'betano',  'text',  'badge-betano',  'Betano',  logos.betano);
-  buildExtUI('ext-betfair-ui', 'betfair', 'text',  'badge-betfair', 'Betfair', logos.betfair);
-  buildExtUI('ext-superbet-ui','superbet','image', 'badge-superbet','Superbet',logos.superbet);
-  buildExtUI('ext-generic-ui', 'generic', 'both',  'badge-generic', 'Genérica', '');
-  enablePaste('ext-bet365-ui');
-  enablePaste('ext-superbet-ui');
-  enablePaste('ext-generic-ui');
+  buildExtUI('ext-bet365-ui','bet365','image','badge-bet365','Bet365',logos.bet365);
+  buildExtUI('ext-betano-ui','betano','text','badge-betano','Betano',logos.betano);
+  buildExtUI('ext-betfair-ui','betfair','text','badge-betfair','Betfair',logos.betfair);
+  buildExtUI('ext-superbet-ui','superbet','image','badge-superbet','Superbet',logos.superbet);
+  buildExtUI('ext-generic-ui','generic','both','badge-generic','Genérica','');
+  enablePaste('ext-bet365-ui'); enablePaste('ext-superbet-ui'); enablePaste('ext-generic-ui');
 }
 
-// ══════════════════════════════════════════════
-//  POLYMARKET ENGINE (unchanged)
-// ══════════════════════════════════════════════
-const HIST_KEY='poly_hist_v5',WALLET_KEY='poly_wallet_v5',BCB_KEY='bcb_v3';
-let dadosAtivos=[],dadosFechados=[],dolarHoje=null;
+// ═══════════════════════════════════════════════════
+//  POLYMARKET ENGINE
+// ═══════════════════════════════════════════════════
+const HIST_KEY='poly_hist_v5', WALLET_KEY='poly_wallet_v5', BCB_KEY='bcb_v3';
+let dadosAtivos=[], dadosFechados=[], dolarHoje=null;
+let resChartPL=null, resChartDonut=null;
 
-function toggleTheme(){const h=document.documentElement,n=h.dataset.theme==='dark'?'light':'dark';h.dataset.theme=n;document.getElementById('themeLabel').textContent=n;localStorage.setItem('poly_theme_v2',n);}
-(()=>{const t=localStorage.getItem('poly_theme_v2');if(t){document.documentElement.dataset.theme=t;document.getElementById('themeLabel').textContent=t;}})();
+// Resultado filter state
+let resPeriod = 'tudo', resDateFrom='', resDateTo='';
+let calCurrentMonth = null; // 'YYYY-MM'
+
+function toggleTheme(){
+  const h=document.documentElement, n=h.dataset.theme==='dark'?'light':'dark';
+  h.dataset.theme=n; document.getElementById('themeLabel').textContent=n;
+  localStorage.setItem('poly_theme_v2',n);
+}
+(()=>{const t=localStorage.getItem('poly_theme_v2'); if(t){document.documentElement.dataset.theme=t; document.getElementById('themeLabel').textContent=t;}})();
 
 function showPage(name,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
-  if(el)el.classList.add('active');
+  if(el) el.classList.add('active');
   document.getElementById('topbarTitle').textContent=el?el.textContent.trim():name;
-  if(name==='historico')renderHistorico();
-  if(name==='csv')renderCSVPage();
-  if(name==='bases')initKbPage();
+  if(name==='historico') renderHistorico();
+  if(name==='csv') renderCSVPage();
+  if(name==='bases') initKbPage();
+  if(name==='tipsters-mgr') renderTipsterList();
+  if(name==='resultados') renderResultados();
 }
 
 async function getCotacao(ds){
   const c=JSON.parse(localStorage.getItem(BCB_KEY)||'{}');
-  if(c[ds])return c[ds];
+  if(c[ds]) return c[ds];
   try{
     const[d,m,y]=ds.split('/');
     const r=await fetch(`https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoDolarDia(dataCotacao=@dataCotacao)?@dataCotacao='${m}-${d}-${y}'&$top=1&$format=json`);
     const j=await r.json();
     const v=j?.value?.[0]?.cotacaoVenda;
-    if(v){c[ds]=v;localStorage.setItem(BCB_KEY,JSON.stringify(c));return v;}
+    if(v){c[ds]=v; localStorage.setItem(BCB_KEY,JSON.stringify(c)); return v;}
   }catch(e){}
   return null;
 }
 
 async function getDolarHoje(){
   for(let i=0;i<5;i++){
-    const d=new Date();d.setDate(d.getDate()-i);
-    const s=fmtObj(d);const v=await getCotacao(s);
-    if(v)return{val:v,str:s};
-  }return null;
-}
-
-function fmtObj(d){return`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;}
-
-function parseISODate(str){
-  if(!str)return null;
-  if(typeof str==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(str)){
-    const[y,m,d]=str.split('-').map(Number);
-    return new Date(y,m-1,d,12,0,0);
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const s=fmtObj(d); const v=await getCotacao(s);
+    if(v) return{val:v,str:s};
   }
-  return new Date(str);
+  return null;
 }
-function parseDateFromPos(pos,isClosed){
-  const ts=isClosed?(pos.endDate||pos.startDate||pos.createdAt||pos.timestamp):(pos.startDate||pos.createdAt||pos.timestamp);
-  if(!ts)return null;
-  if(typeof ts==='string'&&ts.includes('-'))return parseISODate(ts);
-  return new Date(parseInt(ts)*(String(ts).length<=10?1000:1));
-}
+
+function fmtObj(d){return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;}
+function parseISODate(str){if(!str)return null;if(/^\d{4}-\d{2}-\d{2}$/.test(str)){const[y,m,d]=str.split('-').map(Number);return new Date(y,m-1,d,12);}return new Date(str);}
+function parseDateFromPos(pos,isClosed){const ts=isClosed?(pos.endDate||pos.startDate||pos.createdAt):(pos.startDate||pos.createdAt);if(!ts)return null;if(typeof ts==='string'&&ts.includes('-'))return parseISODate(ts);return new Date(parseInt(ts)*(String(ts).length<=10?1000:1));}
 function fmtDate(pos,isClosed=false){const d=parseDateFromPos(pos,isClosed);return d?fmtObj(d):'';}
+function fmtDateISO(pos,isClosed=false){const d=parseDateFromPos(pos,isClosed);if(!d)return'';const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${dd}`;}
 function calcOdd(pos){const p=parseFloat(pos.avgPrice||pos.price||0);return(p>0&&p<1)?1/p:1;}
 function stakeUSD(pos){return parseFloat(pos.initialValue||pos.size||0);}
 function nf(n,d=2){return n.toFixed(d).replace('.',',');}
 function fu(n){return'$'+n.toFixed(2);}
 function fb(n){return'R$ '+n.toFixed(2).replace('.',',');}
-function makeId(pos,s=''){return`${(pos.title||pos.market||'')}__${fmtDate(pos,s==='__c')}__${stakeUSD(pos).toFixed(2)}${s}`;}
+function makeId(pos,s=''){return`${(pos.title||'')}__${fmtDate(pos,s==='__c')}__${stakeUSD(pos).toFixed(2)}${s}`;}
 function setStatus(m,t){const e=document.getElementById('statusPill');e.className='status-pill '+t;e.textContent=m;}
 
 function reconciliarRedeems(fechados,activity,activeCids=new Set()){
   const closedIds=new Set(fechados.map(p=>p.conditionId).filter(Boolean));
   const actMap={};
-  activity.forEach(a=>{
-    const cid=a.conditionId;if(!cid)return;
-    if(!actMap[cid])actMap[cid]={buys:[],redeems:[]};
-    if(a.type==='REDEEM'||a.side==='REDEEM')actMap[cid].redeems.push(a);
-    else if(a.type==='BUY'||a.side==='BUY')actMap[cid].buys.push(a);
-  });
+  activity.forEach(a=>{const cid=a.conditionId;if(!cid)return;if(!actMap[cid])actMap[cid]={buys:[],redeems:[]};if(a.type==='REDEEM'||a.side==='REDEEM')actMap[cid].redeems.push(a);else if(a.type==='BUY'||a.side==='BUY')actMap[cid].buys.push(a);});
   const extras=[];
   Object.entries(actMap).forEach(([cid,{buys,redeems}])=>{
     if(!redeems.length||closedIds.has(cid)||activeCids.has(cid))return;
@@ -1148,12 +1213,12 @@ async function buscar(){
   if(!w||!w.startsWith('0x')){setStatus('endereço inválido','err');return;}
   localStorage.setItem(WALLET_KEY,w);
   const btn=document.getElementById('syncBtn');
-  btn.disabled=true;btn.innerHTML='<span class="spin">↻</span> Sincronizando...';
+  btn.disabled=true; btn.innerHTML='<span>↻</span> Sincronizando...';
   setStatus('buscando...','loading');
   try{
     const B='https://data-api.polymarket.com';
     const[rA,rAct]=await Promise.all([fetch(`${B}/positions?user=${w}&sizeThreshold=.1&limit=100`),fetch(`${B}/activity?user=${w}&limit=500`)]);
-    if(!rA.ok)throw new Error('HTTP '+rA.status);
+    if(!rA.ok) throw new Error('HTTP '+rA.status);
     let[todasPos,activity]=await Promise.all([rA.json(),rAct.ok?rAct.json():[]]);
     todasPos=Array.isArray(todasPos)?todasPos:[];
     dadosFechados=todasPos.filter(p=>p.redeemable===true&&parseFloat(p.currentValue||0)===0);
@@ -1184,16 +1249,18 @@ async function renderDashboard(){
   const dolar=dolarHoje?.val||null;
   sk('k-ativas',dadosAtivos.length,'');
   sk('k-valor',fu(totalAtivo),'blue');
-  if(dolar)document.getElementById('k-valor-brl').textContent=fb(totalAtivo*dolar);
+  if(dolar) document.getElementById('k-valor-brl').textContent=fb(totalAtivo*dolar);
   sk('k-pnl',(totalPnl>=0?'+':'')+fu(totalPnl),totalPnl>=0?'green':'red');
-  if(dolar)document.getElementById('k-pnl-brl').textContent=(totalPnl*dolar>=0?'+ ':'')+fb(totalPnl*dolar);
+  if(dolar) document.getElementById('k-pnl-brl').textContent=(totalPnl*dolar>=0?'+ ':'')+fb(totalPnl*dolar);
   sk('k-wr',wr.toFixed(1)+'%',wr>=50?'green':wr>0?'amber':'red');
-  if(dolar){sk('k-stake-avg',fb(stakeAvg*dolar),'');document.getElementById('k-stake-avg-usd').textContent=fu(stakeAvg)+' USD';}
+  if(dolar){sk('k-stake-avg',fb(stakeAvg*dolar),''); document.getElementById('k-stake-avg-usd').textContent=fu(stakeAvg)+' USD';}
   else sk('k-stake-avg',fu(stakeAvg),'');
   sk('k-odd-avg',nf(oddAvg,4),'amber');
-  if(dolar){sk('k-dolar','R$ '+nf(dolar,4),'');document.getElementById('k-dolar-data').textContent=dolarHoje.str;}
+  if(dolar){sk('k-dolar','R$ '+nf(dolar,4),''); document.getElementById('k-dolar-data').textContent=dolarHoje.str;}
   sk('k-total',dadosAtivos.length+dadosFechados.length,'');
-  renderAtivasTable();renderFechadasTable();renderPosicoesAll();
+  renderAtivasTable();
+  renderFechadasTable();
+  renderPosicoesAll();
 }
 
 function sk(id,v,c){const e=document.getElementById(id);if(!e)return;e.textContent=v;if(c)e.className='kpi-val '+c;}
@@ -1203,16 +1270,40 @@ function renderAtivasTable(){
   const el=document.getElementById('tbl-ativas');
   document.getElementById('cnt-ativas').textContent=dadosAtivos.length;
   if(!dadosAtivos.length){el.innerHTML='<div class="empty-state">Nenhuma posição ativa.</div>';return;}
-  el.innerHTML=tw('<tr><th>Mercado</th><th>Data do evento</th><th>Status</th><th>Stake USD</th><th>P&L %</th><th>Valor atual</th></tr>',
-    dadosAtivos.map(p=>{const cur=parseFloat(p.currentValue||0),ini=parseFloat(p.initialValue||0),pct=ini>0?(cur-ini)/ini*100:0;return`<tr><td style="max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,62)}</td><td>${eventDateBadge(p._eventEndDate)}</td><td><span class="badge badge-ativa">ativa</span></td><td class="mono">${fu(ini)}</td><td class="mono ${pct>=0?'green':'red'}">${pct>=0?'+':''}${pct.toFixed(1)}%</td><td class="mono">${fu(cur)}</td></tr>`;}).join(''));
+  const assign=getTipsterAssign();
+  const tipsters=getTipsters();
+  const tipOpts=`<option value="">— tipster —</option>${tipsters.map(t=>`<option value="${t}">${t}</option>`).join('')}`;
+  el.innerHTML=tw(
+    '<tr><th>Mercado</th><th>Data do evento</th><th>Tipster</th><th>Status</th><th>Stake USD</th><th>P&L %</th><th>Valor atual</th></tr>',
+    dadosAtivos.map(p=>{
+      const cur=parseFloat(p.currentValue||0),ini=parseFloat(p.initialValue||0),pct=ini>0?(cur-ini)/ini*100:0;
+      const cid=p.conditionId||'';
+      const selTip=assign[cid]||'';
+      const tipSel=`<select onchange="assignTipster(this,'${cid}')" style="background:var(--bg4);border:1px solid var(--border2);border-radius:4px;padding:3px 6px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer"><option value="">— tipster —</option>${tipsters.map(t=>`<option value="${t}"${t===selTip?' selected':''}>${t}</option>`).join('')}</select>`;
+      return`<tr><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,60)}</td><td>${eventDateBadge(p._eventEndDate)}</td><td>${tipSel}</td><td><span class="badge badge-ativa">ativa</span></td><td class="mono">${fu(ini)}</td><td class="mono ${pct>=0?'green':'red'}">${pct>=0?'+':''}${pct.toFixed(1)}%</td><td class="mono">${fu(cur)}</td></tr>`;
+    }).join(''));
+}
+
+function assignTipster(sel, conditionId) {
+  if (!conditionId) return;
+  const assign = getTipsterAssign();
+  if (sel.value) assign[conditionId] = sel.value;
+  else delete assign[conditionId];
+  saveTipsterAssign(assign);
 }
 
 function renderFechadasTable(){
   const el=document.getElementById('tbl-fechadas');
   document.getElementById('cnt-fechadas').textContent=dadosFechados.length;
   if(!dadosFechados.length){el.innerHTML='<div class="empty-state">Nenhuma posição encerrada.</div>';return;}
-  el.innerHTML=tw('<tr><th>Mercado</th><th>Data partida</th><th>Res</th><th>Stake USD</th><th>P&L $</th><th>Odd</th></tr>',
-    dadosFechados.map(p=>{const pnl=parseFloat(p.cashPnl||0),res=pnl>0?'W':'L';return`<tr><td style="max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,62)}</td><td class="mono muted">${fmtDate(p,true)}</td><td><span class="badge badge-${res}">${res}</span></td><td class="mono">${fu(stakeUSD(p))}</td><td class="mono ${pnl>=0?'green':'red'}">${pnl>=0?'+':''}${fu(pnl)}</td><td class="mono amber">${nf(calcOdd(p),4)}</td></tr>`;}).join(''));
+  const assign=getTipsterAssign();
+  el.innerHTML=tw('<tr><th>Mercado</th><th>Data partida</th><th>Tipster</th><th>Res</th><th>Stake USD</th><th>P&L $</th><th>Odd</th></tr>',
+    dadosFechados.map(p=>{
+      const pnl=parseFloat(p.cashPnl||0),res=pnl>0?'W':'L';
+      const cid=p.conditionId||'';
+      const tip=assign[cid]||'—';
+      return`<tr><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,60)}</td><td class="mono muted">${fmtDate(p,true)}</td><td style="font-size:11px;color:var(--text2)">${tip}</td><td><span class="badge badge-${res}">${res}</span></td><td class="mono">${fu(stakeUSD(p))}</td><td class="mono ${pnl>=0?'green':'red'}">${pnl>=0?'+':''}${fu(pnl)}</td><td class="mono amber">${nf(calcOdd(p),4)}</td></tr>`;
+    }).join(''));
 }
 
 let posFilter='all';
@@ -1222,13 +1313,21 @@ function filterPos(f,el){
   if(el){el.style.borderColor='var(--green)';el.style.color='var(--green)';}
   renderPosicoesAll();
 }
+
 function renderPosicoesAll(){
+  const assign=getTipsterAssign();
   const all=[...dadosAtivos.map(p=>({...p,_r:'ativa',_c:false})),...dadosFechados.map(p=>({...p,_r:parseFloat(p.cashPnl||0)>0?'W':'L',_c:true}))];
   const fil=posFilter==='all'?all:all.filter(p=>p._r===posFilter);
   const el=document.getElementById('tbl-posicoes');
   if(!fil.length){el.innerHTML='<div class="empty-state">Nenhuma posição encontrada.</div>';return;}
-  el.innerHTML=tw('<tr><th>Res</th><th>Mercado</th><th>Data</th><th>Esporte</th><th>Stake USD</th><th>Odd</th><th>P&L</th></tr>',
-    fil.map(p=>{const pnl=parseFloat(p.cashPnl||0),res=p._r;const dateCell=p._c?`<span class="mono muted" style="font-size:11px">${fmtDate(p,true)}</span>`:eventDateBadge(p._eventEndDate);return`<tr><td><span class="badge badge-${res}">${res}</span></td><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,55)}</td><td>${dateCell}</td><td class="muted" style="font-size:11px">${detEs(p.title||'')}</td><td class="mono">${fu(stakeUSD(p))}</td><td class="mono amber">${nf(calcOdd(p),4)}</td><td class="mono ${res==='W'?'green':res==='L'?'red':''}">${res==='ativa'?'—':((pnl>=0?'+':'')+fu(pnl))}</td></tr>`;}).join(''));
+  el.innerHTML=tw('<tr><th>Res</th><th>Mercado</th><th>Data</th><th>Tipster</th><th>Esporte</th><th>Stake USD</th><th>Odd</th><th>P&L</th></tr>',
+    fil.map(p=>{
+      const pnl=parseFloat(p.cashPnl||0),res=p._r;
+      const dateCell=p._c?`<span class="mono muted" style="font-size:11px">${fmtDate(p,true)}</span>`:eventDateBadge(p._eventEndDate);
+      const cid=p.conditionId||'';
+      const tip=assign[cid]||'—';
+      return`<tr><td><span class="badge badge-${res}">${res}</span></td><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,55)}</td><td>${dateCell}</td><td style="font-size:11px;color:var(--text2)">${tip}</td><td class="muted" style="font-size:11px">${detEs(p.title||'')}</td><td class="mono">${fu(stakeUSD(p))}</td><td class="mono amber">${nf(calcOdd(p),4)}</td><td class="mono ${res==='W'?'green':res==='L'?'red':''}">${res==='ativa'?'—':((pnl>=0?'+':'')+fu(pnl))}</td></tr>`;
+    }).join(''));
 }
 
 function detEs(t){
@@ -1241,6 +1340,556 @@ function detEs(t){
   return'E-Sports';
 }
 
+// ═══════════════════════════════════════════════════
+//  RESULTADOS PAGE
+// ═══════════════════════════════════════════════════
+
+function setResPeriod(period, btn) {
+  resPeriod = period;
+  resDateFrom = ''; resDateTo = '';
+  document.getElementById('res-df').value = '';
+  document.getElementById('res-dt').value = '';
+  document.querySelectorAll('.res-qbtn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderResultados();
+}
+
+function setResCustomDate() {
+  resPeriod = 'custom';
+  resDateFrom = document.getElementById('res-df').value;
+  resDateTo = document.getElementById('res-dt').value;
+  document.querySelectorAll('.res-qbtn').forEach(b => b.classList.remove('active'));
+  renderResultados();
+}
+
+function getResRows() {
+  // Build rows from history + assign tipsters
+  const hist = JSON.parse(localStorage.getItem(HIST_KEY) || '{"ids":[],"linhas":[]}');
+  const assign = getTipsterAssign();
+  // Parse hist lines (TSV)
+  const rows = hist.linhas.map((ln, idx) => {
+    const p = ln.split('\t');
+    // Find conditionId for this entry from dadosFechados by matching title/date
+    // Use position: dateStr/title matching
+    const dateStr = (p[0]||'').trim(); // DD/MM/YYYY
+    const desc = (p[6]||'').trim();
+    let tipster = (p[2]||'').trim();
+    // Try to find a conditionId match from dadosFechados
+    if (!tipster) {
+      const match = dadosFechados.find(pos => {
+        const d = fmtDate(pos, true);
+        return d === dateStr;
+      });
+      if (match && match.conditionId) tipster = assign[match.conditionId] || '';
+    }
+    const stakeRaw = parseFloat((p[7]||'0').replace(',','.')) || 0;
+    const oddRaw = parseFloat((p[8]||'1').replace(',','.')) || 1;
+    const resultado = (p[9]||'').trim();
+    const lucro = resultado === 'W' ? stakeRaw * (oddRaw - 1) : resultado === 'L' ? -stakeRaw : 0;
+    // parse date to ISO
+    let isoDate = '';
+    if (dateStr.includes('/')) {
+      const pts = dateStr.split('/');
+      if (pts.length === 3) isoDate = `${pts[2]}-${pts[1].padStart(2,'0')}-${pts[0].padStart(2,'0')}`;
+    } else isoDate = dateStr;
+    return { date: isoDate, dateDisplay: dateStr, esporte: (p[1]||'E-Sports').trim(), tipster, casa: (p[3]||'Polymarket').trim(), parceiro: (p[4]||'').trim(), aposta: (p[5]||'').trim(), desc, stake: stakeRaw, odd: oddRaw, resultado, lucro };
+  }).filter(r => r.stake > 0 || r.resultado);
+
+  // Filter by period
+  const now = new Date();
+  const today = now.toISOString().slice(0,10);
+  let from = '', to = today;
+
+  if (resPeriod === 'hoje') from = today;
+  else if (resPeriod === '7d') { const d=new Date(now); d.setDate(d.getDate()-6); from=d.toISOString().slice(0,10); }
+  else if (resPeriod === 'semana') { const d=new Date(now); const dow=d.getDay()||7; d.setDate(d.getDate()-(dow-1)); from=d.toISOString().slice(0,10); }
+  else if (resPeriod === 'mes') { from=today.slice(0,7)+'-01'; }
+  else if (resPeriod === '30d') { const d=new Date(now); d.setDate(d.getDate()-29); from=d.toISOString().slice(0,10); }
+  else if (resPeriod === '90d') { const d=new Date(now); d.setDate(d.getDate()-89); from=d.toISOString().slice(0,10); }
+  else if (resPeriod === 'custom') { from=resDateFrom; to=resDateTo||today; }
+
+  return rows.filter(r => {
+    if (!r.date) return true;
+    if (from && r.date < from) return false;
+    if (to && r.date > to) return false;
+    return true;
+  });
+}
+
+function renderResultados() {
+  const rows = getResRows();
+  renderResKPIs(rows);
+  renderResPLChart(rows);
+  renderResStreaks(rows);
+  renderCalendar();
+  renderResDonut(rows);
+  renderResTipsterCards(rows);
+  renderResTipsterTable(rows);
+  renderResSportCards(rows);
+}
+
+function renderResKPIs(rows) {
+  const el = document.getElementById('res-kpis');
+  if (!el) return;
+  const enc = rows.filter(r => ['W','L'].includes(r.resultado));
+  const W = rows.filter(r => r.resultado === 'W').length;
+  const L = rows.filter(r => r.resultado === 'L').length;
+  const totalPnl = rows.reduce((s,r) => s + r.lucro, 0);
+  const turnover = rows.reduce((s,r) => s + r.stake, 0);
+  const roi = turnover > 0 ? (totalPnl / turnover) * 100 : 0;
+  const wr = enc.length > 0 ? (W / enc.length) * 100 : 0;
+  const oddWSum = rows.reduce((s,r) => s + r.odd * r.stake, 0);
+  const oddAvg = turnover > 0 ? oddWSum / turnover : 0;
+  const stakeAvg = rows.length > 0 ? turnover / rows.length : 0;
+  const tipAtivos = [...new Set(rows.map(r=>r.tipster).filter(Boolean))].length;
+  const dolar = dolarHoje?.val || null;
+
+  const kpis = [
+    { label: 'P/L (USD)', val: (totalPnl>=0?'+':'')+fu(totalPnl), cls: totalPnl>=0?'green':'red', sub: dolar ? (totalPnl>=0?'+ ':'')+fb(totalPnl*dolar) : '' },
+    { label: 'Turnover', val: fu(turnover), cls: 'blue', sub: rows.length + ' apostas' },
+    { label: 'ROI', val: (roi>=0?'+':'')+roi.toFixed(2)+'%', cls: roi>=0?'green':'red', sub: enc.length + ' encerradas' },
+    { label: 'Win Rate', val: wr.toFixed(1)+'%', cls: wr>=50?'green':wr>0?'amber':'red', sub: `W:${W} L:${L}` },
+    { label: 'Odd Média Pond.', val: nf(oddAvg,4), cls: 'amber', sub: 'Σ(odd×stake)/Σ(stake)' },
+    { label: 'Stake Média', val: fu(stakeAvg), cls: '', sub: 'por aposta' },
+    { label: 'Tipsters Ativos', val: tipAtivos.toString(), cls: 'blue', sub: tipAtivos > 0 ? [...new Set(rows.map(r=>r.tipster).filter(Boolean))].slice(0,3).join(', ')+'...' : 'Nenhum' },
+    { label: 'USD/BRL', val: dolar ? 'R$ '+nf(dolar,4) : '—', cls: '', sub: dolarHoje?.str || '' },
+  ];
+  el.innerHTML = kpis.map(k => `<div class="kpi"><div class="kpi-label">${k.label}</div><div class="kpi-val ${k.cls}">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
+}
+
+function renderResPLChart(rows) {
+  const canvas = document.getElementById('chartResPL');
+  if (!canvas) return;
+  if (resChartPL) { resChartPL.destroy(); resChartPL = null; }
+
+  // Group by day
+  const byDay = {};
+  rows.forEach(r => {
+    if (!r.date) return;
+    if (!byDay[r.date]) byDay[r.date] = 0;
+    byDay[r.date] += r.lucro;
+  });
+  const days = Object.keys(byDay).sort();
+  if (!days.length) return;
+
+  const dailyVals = days.map(d => parseFloat(byDay[d].toFixed(2)));
+  let cum = 0;
+  const cumVals = dailyVals.map(v => { cum += v; return parseFloat(cum.toFixed(2)); });
+
+  const labelStep = Math.max(1, Math.floor(days.length / 20));
+  const labels = days.map((d,i) => {
+    if (i % labelStep !== 0 && i !== days.length-1) return '';
+    const pts = d.split('-');
+    return pts.length===3 ? `${pts[2]}/${pts[1]}` : d;
+  });
+
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  const gridColor = isDark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.06)';
+  const tickColor = isDark ? '#505060' : '#a0a0b8';
+
+  resChartPL = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { type: 'line', data: cumVals, borderColor: '#00d68f', tension: .4, pointRadius: 0, fill: false, borderWidth: 2, yAxisID: 'y1', label: 'Acumulado' },
+        { type: 'bar', data: dailyVals, backgroundColor: dailyVals.map(v => v >= 0 ? 'rgba(0,214,143,.65)' : 'rgba(240,80,110,.65)'), borderRadius: 1, yAxisID: 'y', label: 'Diário', barPercentage: 0.9, categoryPercentage: 1.0 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        label: ctx => (ctx.dataset.label||'')+': '+(ctx.raw>=0?'+':'')+fu(ctx.raw),
+        title: ctx => { const i=ctx[0].dataIndex; return days[i]?.split('-').reverse().join('/')||''; }
+      }}},
+      scales: {
+        x: { ticks: { color: tickColor, font: { size: 9 }, maxRotation: 90, minRotation: 90, autoSkip: false, callback: (v,i) => labels[i]||null }, grid: { display: false }, border: { display: false }},
+        y: { ticks: { color: tickColor, font: { size: 10 }, callback: v => fu(v) }, grid: { color: gridColor }, border: { display: false }, position: 'left' },
+        y1: { ticks: { color: tickColor, font: { size: 10 }, callback: v => fu(v) }, grid: { display: false }, border: { display: false }, position: 'right' }
+      }
+    }
+  });
+}
+
+function renderResStreaks(rows) {
+  const el = document.getElementById('res-streaks');
+  if (!el) return;
+
+  const byDay = {};
+  rows.forEach(r => { if (!r.date) return; if (!byDay[r.date]) byDay[r.date] = 0; byDay[r.date] += r.lucro; });
+  const days = Object.keys(byDay).sort();
+
+  let posStreak = 0, posVal = 0, negStreak = 0, negVal = 0;
+  for (let i = days.length-1; i >= 0; i--) {
+    if (byDay[days[i]] > 0) { posStreak++; posVal += byDay[days[i]]; } else break;
+  }
+  for (let i = days.length-1; i >= 0; i--) {
+    if (byDay[days[i]] < 0) { negStreak++; negVal += byDay[days[i]]; } else break;
+  }
+
+  // Peak
+  let cum = 0, peak = 0, peakDate = '';
+  days.forEach(d => { cum += byDay[d]; if (cum > peak) { peak = cum; peakDate = d; } });
+  const dist = cum - peak;
+  const peakFmt = peakDate ? peakDate.split('-').reverse().join('/') : '—';
+
+  el.innerHTML = `
+    <div class="streak-card">
+      <div class="streak-label" style="color:var(--green)">Sequência Positiva</div>
+      <div class="streak-val ${posStreak>0?'green':'muted'}">${posStreak} dias</div>
+      <div class="streak-sub">${posStreak>0?'+ '+fu(posVal):'última: '+posStreak+' dias'}</div>
+    </div>
+    <div class="streak-card">
+      <div class="streak-label" style="color:var(--red)">Drawdown Atual</div>
+      <div class="streak-val ${negStreak>0?'red':'muted'}">${negStreak} dias</div>
+      <div class="streak-sub">${negStreak>0?fu(negVal):'sem drawdown'}</div>
+    </div>
+    <div class="streak-card">
+      <div class="streak-label" style="color:var(--amber)">Topo Histórico</div>
+      <div class="streak-val green">${peak>0?(cum>=0?'+':'')+fu(peak):'—'}</div>
+      <div class="streak-sub">atingido em ${peakFmt}</div>
+    </div>
+    <div class="streak-card">
+      <div class="streak-label">Distância do Topo</div>
+      <div class="streak-val ${dist<0?'red':'green'}">${dist<0?fu(dist):'+'+fu(0)}</div>
+      <div class="streak-sub">P/L atual: ${(cum>=0?'+':'')+fu(cum)}</div>
+    </div>`;
+}
+
+// Calendar helpers
+const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MESES_SHORT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+function initCalendar() {
+  const hist = JSON.parse(localStorage.getItem(HIST_KEY) || '{"ids":[],"linhas":[]}');
+  const months = [...new Set(hist.linhas.map(ln => {
+    const p = ln.split('\t'); const ds = (p[0]||'').trim();
+    if (ds.includes('/')) { const pts=ds.split('/'); return pts.length===3?`${pts[2]}-${pts[1].padStart(2,'0')}`:null; }
+    return ds.slice(0,7) || null;
+  }).filter(Boolean))].sort().reverse();
+
+  const sel = document.getElementById('cal-month-sel');
+  if (!sel) return;
+  sel.innerHTML = months.map(m => {
+    const [y,mo] = m.split('-');
+    return `<option value="${m}">${MESES_SHORT[parseInt(mo)-1]} ${y}</option>`;
+  }).join('');
+  if (!calCurrentMonth) calCurrentMonth = months[0] || new Date().toISOString().slice(0,7);
+  sel.value = calCurrentMonth;
+}
+
+function calPrev() {
+  const sel = document.getElementById('cal-month-sel');
+  const opts = Array.from(sel.options);
+  const idx = opts.findIndex(o => o.value === calCurrentMonth);
+  if (idx < opts.length - 1) { calCurrentMonth = opts[idx+1].value; sel.value = calCurrentMonth; renderCalendar(); }
+}
+
+function calNext() {
+  const sel = document.getElementById('cal-month-sel');
+  const opts = Array.from(sel.options);
+  const idx = opts.findIndex(o => o.value === calCurrentMonth);
+  if (idx > 0) { calCurrentMonth = opts[idx-1].value; sel.value = calCurrentMonth; renderCalendar(); }
+}
+
+function renderCalendar() {
+  const sel = document.getElementById('cal-month-sel');
+  if (sel && sel.value) calCurrentMonth = sel.value;
+  if (!calCurrentMonth) return;
+
+  const cont = document.getElementById('cal-container');
+  if (!cont) return;
+
+  // Get all rows for this month
+  const hist = JSON.parse(localStorage.getItem(HIST_KEY) || '{"ids":[],"linhas":[]}');
+  const dayMap = {};
+  hist.linhas.forEach(ln => {
+    const p = ln.split('\t');
+    const ds = (p[0]||'').trim();
+    let isoDate = '';
+    if (ds.includes('/')) { const pts=ds.split('/'); if(pts.length===3) isoDate=`${pts[2]}-${pts[1].padStart(2,'0')}-${pts[0].padStart(2,'0')}`; }
+    else isoDate = ds;
+    if (!isoDate.startsWith(calCurrentMonth)) return;
+    const stake = parseFloat((p[7]||'0').replace(',','.')) || 0;
+    const odd = parseFloat((p[8]||'1').replace(',','.')) || 1;
+    const resultado = (p[9]||'').trim();
+    const lucro = resultado==='W' ? stake*(odd-1) : resultado==='L' ? -stake : 0;
+    if (!dayMap[isoDate]) dayMap[isoDate] = { pl: 0, n: 0 };
+    dayMap[isoDate].pl += lucro;
+    dayMap[isoDate].n++;
+  });
+
+  const [yr, mo] = calCurrentMonth.split('-').map(Number);
+  const firstDay = new Date(yr, mo-1, 1);
+  const lastDay = new Date(yr, mo, 0);
+  const daysInMonth = lastDay.getDate();
+  let startDow = (firstDay.getDay() + 6) % 7; // Mon=0
+
+  const monthPl = Object.values(dayMap).reduce((s,v) => s+v.pl, 0);
+  const monthBets = Object.values(dayMap).reduce((s,v) => s+v.n, 0);
+  const plEl = document.getElementById('cal-month-pl');
+  const betsEl = document.getElementById('cal-month-bets');
+  if (plEl) { plEl.textContent = (monthPl>=0?'+ ':'- ')+'R$ '+Math.abs(monthPl).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); plEl.style.color = monthPl>=0?'var(--green)':'var(--red)'; }
+  if (betsEl) betsEl.textContent = monthBets + ' apostas';
+
+  const today = new Date().toISOString().slice(0,10);
+  const allPls = Object.values(dayMap).map(v => Math.abs(v.pl));
+  const maxAbs = Math.max(...allPls, 1);
+
+  function dayBg(pl) {
+    const intensity = 0.2 + Math.min(1, Math.abs(pl)/maxAbs) * 0.75;
+    if (pl > 0) return `rgba(0,214,143,${intensity})`;
+    if (pl < 0) return `rgba(240,80,110,${intensity})`;
+    return 'var(--bg4)';
+  }
+
+  const DAY_NAMES = ['S','T','Q','Q','S','S','D'];
+  let html = `<div class="cal-grid">`;
+  DAY_NAMES.forEach(d => { html += `<div class="cal-header-day">${d}</div>`; });
+
+  for (let i = 0; i < startDow; i++) html += `<div class="cal-day empty-day"></div>`;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${yr}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const data = dayMap[key];
+    const isToday = key === today;
+    if (!data) {
+      html += `<div class="cal-day${isToday?' today-day':''}" style="background:var(--bg4);opacity:.4;border:1px solid ${isToday?'var(--blue)':'transparent'}"><div class="cal-day-num" style="color:var(--text3)">${d}</div></div>`;
+    } else {
+      const bg = dayBg(data.pl);
+      const txtColor = Math.abs(data.pl)/maxAbs > 0.5 ? '#fff' : (data.pl>=0?'var(--green)':'var(--red)');
+      html += `<div class="cal-day has-data" style="background:${bg};border-color:${isToday?'var(--blue)':bg}"><div class="cal-day-num" style="color:${txtColor}">${d}</div><div class="cal-day-pl" style="color:${txtColor};font-size:11px">${(data.pl>=0?'+':'')+Math.round(data.pl).toLocaleString('pt-BR')}</div><div class="cal-day-bets" style="color:${txtColor}">${data.n}b</div></div>`;
+    }
+  }
+  html += `</div>`;
+  cont.innerHTML = html;
+}
+
+function renderResDonut(rows) {
+  const canvas = document.getElementById('chartResDonut');
+  if (!canvas) return;
+  if (resChartDonut) { resChartDonut.destroy(); resChartDonut = null; }
+
+  const tipMap = {};
+  rows.filter(r => r.lucro > 0 && r.tipster).forEach(r => {
+    tipMap[r.tipster] = (tipMap[r.tipster] || 0) + r.lucro;
+  });
+  if (!Object.keys(tipMap).length) return;
+
+  const ents = Object.entries(tipMap).sort((a,b)=>b[1]-a[1]);
+  const total = ents.reduce((s,[,v])=>s+v, 0);
+  const PIE_COLORS = ['#00d68f','#5b9cf6','#f0a030','#a78bfa','#2dd4bf','#f87171','#34d399','#fbbf24','#60a5fa','#c084fc','#fb923c','#ffd700'];
+  const isDark = document.documentElement.dataset.theme === 'dark';
+
+  resChartDonut = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: ents.map(e=>e[0]),
+      datasets: [{ data: ents.map(e=>parseFloat(e[1].toFixed(2))), backgroundColor: PIE_COLORS.slice(0,ents.length), borderWidth: 2, borderColor: isDark?'#17171d':'#fff' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: {
+        legend: { display: true, position: 'right', labels: { color: isDark?'#eeedf0':'#0f0f18', font:{size:11}, boxWidth:10, padding:8,
+          generateLabels(chart){ const ds=chart.data.datasets[0]; return chart.data.labels.map((lbl,i)=>{const v=ds.data[i];const pct=total>0?(v/total*100).toFixed(1):'0';return{text:`${lbl}  ${pct}%`,fillStyle:ds.backgroundColor[i],strokeStyle:ds.backgroundColor[i],hidden:false,index:i};});}
+        }},
+        tooltip: { callbacks: { label: ctx => `${ctx.label}: ${fu(ctx.raw)} (${total>0?(ctx.raw/total*100).toFixed(1):'0'}%)` }}
+      }
+    }
+  });
+}
+
+function renderResTipsterCards(rows) {
+  const el = document.getElementById('res-tipster-cards');
+  const countEl = document.getElementById('res-tipster-count');
+  if (!el) return;
+
+  const tipsters = getTipsters();
+  if (!tipsters.length) {
+    el.innerHTML = '<div class="empty-state" style="text-align:left">Nenhum tipster cadastrado. Adicione na aba <strong>Tipsters</strong>.</div>';
+    return;
+  }
+
+  // Build stats per tipster
+  const tipMap = {};
+  tipsters.forEach(t => { tipMap[t] = { pl: 0, stake: 0, n: 0, w: 0, l: 0 }; });
+  rows.forEach(r => {
+    if (!r.tipster || !tipMap[r.tipster]) return;
+    tipMap[r.tipster].pl += r.lucro;
+    tipMap[r.tipster].stake += r.stake;
+    tipMap[r.tipster].n++;
+    if (r.resultado === 'W') tipMap[r.tipster].w++;
+    if (r.resultado === 'L') tipMap[r.tipster].l++;
+  });
+
+  const active = tipsters.filter(t => tipMap[t].n > 0 || true);
+  if (countEl) countEl.textContent = active.length + ' tipsters';
+
+  el.innerHTML = active.sort((a,b) => tipMap[b].pl - tipMap[a].pl).map(t => {
+    const d = tipMap[t];
+    const roi = d.stake > 0 ? (d.pl / d.stake) * 100 : 0;
+    const settled = d.w + d.l;
+    const wr = settled > 0 ? (d.w / settled) * 100 : 0;
+    const plColor = d.pl >= 0 ? 'var(--green)' : 'var(--red)';
+    const roiColor = roi >= 0 ? 'var(--green)' : 'var(--red)';
+    return `<div class="tipster-card ${d.pl>=0?'pos-card':'neg-card'}">
+      <div class="tipster-card-header">
+        <div class="tipster-avatar" style="background:${tipsterColor(t)}">${tipsterInitials(t)}</div>
+        <div class="tipster-name">${t}</div>
+      </div>
+      <div class="tipster-pl" style="color:${plColor}">${d.pl>=0?'+ ':'- '}${fu(Math.abs(d.pl))}</div>
+      <div class="tipster-meta">
+        <span>ROI <span style="color:${roiColor}">${roi>=0?'+':''}${roi.toFixed(1)}%</span></span>
+        <span>Turnover ${fu(d.stake)}</span>
+        <span>${d.n}b WR ${wr.toFixed(0)}%</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderResTipsterTable(rows) {
+  const el = document.getElementById('res-tipster-table');
+  if (!el) return;
+  const tipsters = getTipsters();
+  if (!tipsters.length) { el.innerHTML = '<div class="empty-state">Nenhum tipster cadastrado.</div>'; return; }
+
+  const tipMap = {};
+  tipsters.forEach(t => { tipMap[t] = { pl: 0, stake: 0, n: 0, w: 0, l: 0, oddWSum: 0, oddStk: 0 }; });
+  rows.forEach(r => {
+    if (!r.tipster || !tipMap[r.tipster]) return;
+    const d = tipMap[r.tipster];
+    d.pl += r.lucro; d.stake += r.stake; d.n++;
+    if (r.resultado === 'W') d.w++;
+    if (r.resultado === 'L') d.l++;
+    if (r.odd > 0 && r.stake > 0) { d.oddWSum += r.odd * r.stake; d.oddStk += r.stake; }
+  });
+
+  const totPl = Object.values(tipMap).reduce((s,d)=>s+d.pl,0);
+  const totStake = Object.values(tipMap).reduce((s,d)=>s+d.stake,0);
+  const totN = Object.values(tipMap).reduce((s,d)=>s+d.n,0);
+  const totW = Object.values(tipMap).reduce((s,d)=>s+d.w,0);
+  const totL = Object.values(tipMap).reduce((s,d)=>s+d.l,0);
+  const totROI = totStake > 0 ? (totPl/totStake)*100 : 0;
+  const totWR = (totW+totL) > 0 ? (totW/(totW+totL))*100 : 0;
+
+  const sorted = tipsters.filter(t=>tipMap[t]).sort((a,b)=>tipMap[b].pl-tipMap[a].pl);
+
+  el.innerHTML = `<table class="tbl" style="min-width:650px">
+    <thead><tr>
+      <th onclick="sortResTipsterTable(this,0,'str')">Tipster ↕</th>
+      <th onclick="sortResTipsterTable(this,1,'num')">Bets ↕</th>
+      <th onclick="sortResTipsterTable(this,2,'str')">Resultados</th>
+      <th onclick="sortResTipsterTable(this,3,'num')">P/L ↕</th>
+      <th onclick="sortResTipsterTable(this,4,'num')">Turnover ↕</th>
+      <th onclick="sortResTipsterTable(this,5,'num')">ROI ↕</th>
+      <th onclick="sortResTipsterTable(this,6,'num')">Win Rate% ↕</th>
+      <th onclick="sortResTipsterTable(this,7,'num')">Odd Méd. ↕</th>
+    </tr></thead>
+    <tbody>
+      <tr style="font-weight:700;background:var(--bg4)">
+        <td>Total</td>
+        <td class="mono">${totN}</td>
+        <td style="font-size:10px;color:var(--text3)">W:${totW} L:${totL}</td>
+        <td class="mono ${totPl>=0?'green':'red'}">${totPl>=0?'+':''}${fu(totPl)}</td>
+        <td class="mono">${fu(totStake)}</td>
+        <td class="mono ${totROI>=0?'green':'red'}">${totROI>=0?'+':''}${totROI.toFixed(2)}%</td>
+        <td class="mono">${totWR.toFixed(1)}%</td>
+        <td>—</td>
+      </tr>
+      ${sorted.map(t => {
+        const d = tipMap[t];
+        const roi = d.stake > 0 ? (d.pl/d.stake)*100 : 0;
+        const settled = d.w + d.l;
+        const wr = settled > 0 ? (d.w/settled)*100 : 0;
+        const avgOdd = d.oddStk > 0 ? d.oddWSum/d.oddStk : 0;
+        return `<tr>
+          <td style="font-weight:600">${t}</td>
+          <td class="mono">${d.n}</td>
+          <td style="font-size:10px;color:var(--text3)">W:${d.w} L:${d.l}</td>
+          <td class="mono ${d.pl>=0?'green':'red'}">${d.pl>=0?'+':''}${fu(d.pl)}</td>
+          <td class="mono">${fu(d.stake)}</td>
+          <td class="mono ${roi>=0?'green':'red'}">${roi>=0?'+':''}${roi.toFixed(2)}%</td>
+          <td class="mono">${wr.toFixed(1)}%</td>
+          <td class="mono amber">${avgOdd > 0 ? nf(avgOdd,4) : '—'}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
+}
+
+function renderResSportCards(rows) {
+  const cardsEl = document.getElementById('res-sport-cards');
+  const tblEl = document.getElementById('res-sport-table');
+  if (!cardsEl || !tblEl) return;
+
+  const sportMap = {};
+  rows.forEach(r => {
+    const s = r.esporte || 'E-Sports';
+    if (!sportMap[s]) sportMap[s] = { pl: 0, stake: 0, n: 0, w: 0, l: 0 };
+    sportMap[s].pl += r.lucro;
+    sportMap[s].stake += r.stake;
+    sportMap[s].n++;
+    if (r.resultado === 'W') sportMap[s].w++;
+    if (r.resultado === 'L') sportMap[s].l++;
+  });
+
+  const ents = Object.entries(sportMap).sort((a,b) => b[1].stake - a[1].stake);
+
+  const sportEmojis = { 'E-Sports':'🎮','NBA':'🏀','Futebol':'⚽','Tênis':'🎾','MMA':'🥊','NFL':'🏈','NHL':'🏒','Basquete':'🏀','CS':'🖱️' };
+
+  cardsEl.innerHTML = ents.map(([sport, d]) => {
+    const roi = d.stake > 0 ? (d.pl/d.stake)*100 : 0;
+    const settled = d.w + d.l;
+    const wr = settled > 0 ? (d.w/settled)*100 : 0;
+    const emoji = sportEmojis[sport] || '🏅';
+    return `<div class="sport-card ${d.pl>=0?'pos-card':'neg-card'}">
+      <div class="sport-card-name">${emoji} ${sport}</div>
+      <div class="sport-pl" style="color:${d.pl>=0?'var(--green)':'var(--red)'}">
+        ${d.pl>=0?'+ ':'- '}${fu(Math.abs(d.pl))}
+      </div>
+      <div class="sport-meta">
+        ROI <span style="color:${roi>=0?'var(--green)':'var(--red)'}">${roi>=0?'+':''}${roi.toFixed(1)}%</span><br>
+        Turnover ${fu(d.stake)}<br>
+        ${d.n}b &nbsp; WR ${wr.toFixed(0)}%
+      </div>
+    </div>`;
+  }).join('');
+
+  const totPl = ents.reduce((s,[,d])=>s+d.pl,0);
+  const totStake = ents.reduce((s,[,d])=>s+d.stake,0);
+  const totN = ents.reduce((s,[,d])=>s+d.n,0);
+  const totW = ents.reduce((s,[,d])=>s+d.w,0);
+  const totL = ents.reduce((s,[,d])=>s+d.l,0);
+  const totROI = totStake>0?(totPl/totStake)*100:0;
+  const totWR = (totW+totL)>0?(totW/(totW+totL))*100:0;
+
+  tblEl.innerHTML = `<table class="tbl" style="min-width:550px;margin-top:.75rem">
+    <thead><tr><th>Esporte</th><th>Bets</th><th>Win Rate%</th><th>Turnover</th><th>Profit</th><th>ROI</th></tr></thead>
+    <tbody>
+      <tr style="font-weight:700;background:var(--bg4)">
+        <td>Total</td><td class="mono">${totN}</td><td class="mono">${totWR.toFixed(1)}%</td>
+        <td class="mono">${fu(totStake)}</td>
+        <td class="mono ${totPl>=0?'green':'red'}">${totPl>=0?'+':''}${fu(totPl)}</td>
+        <td class="mono ${totROI>=0?'green':'red'}">${totROI>=0?'+':''}${totROI.toFixed(2)}%</td>
+      </tr>
+      ${ents.map(([sport,d])=>{
+        const roi=d.stake>0?(d.pl/d.stake)*100:0;
+        const settled=d.w+d.l;
+        const wr=settled>0?(d.w/settled)*100:0;
+        const emoji=sportEmojis[sport]||'🏅';
+        return`<tr>
+          <td style="font-weight:600">${emoji} ${sport}</td>
+          <td class="mono">${d.n}</td>
+          <td class="mono">${wr.toFixed(1)}%</td>
+          <td class="mono">${fu(d.stake)}</td>
+          <td class="mono ${d.pl>=0?'green':'red'}">${d.pl>=0?'+':''}${fu(d.pl)}</td>
+          <td class="mono ${roi>=0?'green':'red'}">${roi>=0?'+':''}${roi.toFixed(2)}%</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
+}
+
 function parseTitle(t){
   if(!t)return{time:'Mercado Especial - REVISAR',confronto:''};
   const m=t.match(/^(.+?)\s+vs\.?\s+(.+?)\s*\(BO\d\)/i)||t.match(/^(.+?)\s+vs\.?\s+(.+?)(?:\s*[-–]|$)/i);
@@ -1251,27 +1900,30 @@ function parseTitle(t){
 async function gerarCSV(){
   setStatus('gerando CSV...','loading');
   const hist=JSON.parse(localStorage.getItem(HIST_KEY)||'{"ids":[],"linhas":[]}');
+  const assign=getTipsterAssign();
   let novas=0;
   const sorted=[...dadosFechados].sort((a,b)=>(parseDateFromPos(a,true)||new Date(0))-(parseDateFromPos(b,true)||new Date(0)));
   for(const pos of sorted){
     const id=makeId(pos,'__c');
-    if(hist.ids.includes(id))continue;
+    if(hist.ids.includes(id)) continue;
     const pnl=parseFloat(pos.cashPnl||0);
     const resultado=pnl>0?'W':'L';
     const date=fmtDate(pos,true);
     let cotacao=date?await getCotacao(date):null;
-    if(!cotacao&&dolarHoje)cotacao=dolarHoje.val;
+    if(!cotacao&&dolarHoje) cotacao=dolarHoje.val;
     hist.ids.push(id);
-    hist.linhas.push(buildLinha(pos,resultado,date,cotacao));
+    const cid=pos.conditionId||'';
+    const tipster=assign[cid]||'';
+    hist.linhas.push(buildLinha(pos,resultado,date,cotacao,tipster));
     novas++;
   }
   localStorage.setItem(HIST_KEY,JSON.stringify(hist));
   renderCSVPage();
-  showPage('csv',document.querySelectorAll('.nav-item')[3]);
+  showPage('csv',document.querySelectorAll('.nav-item')[4]);
   setStatus(`✓ CSV gerado (${novas} novas)`,'ok');
 }
 
-function buildLinha(pos,resultado,date,cotacao){
+function buildLinha(pos,resultado,date,cotacao,tipster=''){
   const esporte=detEs(pos.title||'');
   const{time,confronto}=parseTitle(pos.title||'');
   const desc=confronto?`${time} ${confronto}`:time;
@@ -1281,7 +1933,8 @@ function buildLinha(pos,resultado,date,cotacao){
   let odd;
   if(resultado==='W'&&pos.cashPnl!==undefined){const ret=usd+parseFloat(pos.cashPnl||0);odd=usd>0?nf(ret/usd,4):nf(calcOdd(pos),4);}
   else{odd=nf(calcOdd(pos),4);}
-  const T='\t';return[date,esporte,'','Polymarket','Feca [Eu]','ML',desc,stake,odd,resultado].join(T);
+  const T='\t';
+  return[date,esporte,tipster,'Polymarket','Feca [Eu]','ML',desc,stake,odd,resultado].join(T);
 }
 
 function renderHistorico(){
@@ -1292,15 +1945,17 @@ function renderHistorico(){
   const L=hist.linhas.filter(l=>l.split('\t')[9]==='L').length;
   const vol=hist.linhas.reduce((s,l)=>{const p=l.split('\t');return s+(parseFloat(p[7].replace(',','.'))||0);},0);
   const wr=(W+L)>0?Math.round(W/(W+L)*100):0;
-  ki.innerHTML=`<div class="kpi"><div class="kpi-label">Total</div><div class="kpi-val">${hist.linhas.length}</div></div><div class="kpi"><div class="kpi-label">Ganhas</div><div class="kpi-val green">${W}W</div></div><div class="kpi"><div class="kpi-label">Perdidas</div><div class="kpi-val red">${L}L</div></div><div class="kpi"><div class="kpi-label">Win Rate</div><div class="kpi-val ${wr>=50?'green':'red'}">${wr}%</div></div><div class="kpi"><div class="kpi-label">Volume BRL</div><div class="kpi-val blue">R$ ${nf(vol,0)}</div></div>`;
-  el.innerHTML=tw('<tr><th>Res</th><th>Mercado</th><th>Data partida</th><th>Stake BRL</th><th>Odd</th></tr>',
-    hist.linhas.slice().reverse().map(ln=>{const p=ln.split('\t'),res=p[9]||'';return`<tr><td><span class="badge badge-${res||'ativa'}">${res||'ativa'}</span></td><td style="max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p[6]||'').substring(0,58)}</td><td class="mono muted">${p[0]||''}</td><td class="mono">R$ ${p[7]||''}</td><td class="mono amber">${p[8]||''}</td></tr>`;}).join(''));
+  ki.innerHTML=`<div class="kpi"><div class="kpi-label">Total</div><div class="kpi-val">${hist.linhas.length}</div></div><div class="kpi"><div class="kpi-label">Ganhas</div><div class="kpi-val green">${W}W</div></div><div class="kpi"><div class="kpi-label">Perdidas</div><div class="kpi-val red">${L}L</div></div><div class="kpi"><div class="kpi-label">Win Rate</div><div class="kpi-val ${wr>=50?'green':'red'}">${wr}%</div></div><div class="kpi"><div class="kpi-label">Volume</div><div class="kpi-val blue">$${nf(vol,0)}</div></div>`;
+  el.innerHTML=tw('<tr><th>Res</th><th>Mercado</th><th>Data</th><th>Tipster</th><th>Stake</th><th>Odd</th></tr>',
+    hist.linhas.slice().reverse().map(ln=>{const p=ln.split('\t'),res=p[9]||'';return`<tr><td><span class="badge badge-${res||'ativa'}">${res||'ativa'}</span></td><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p[6]||'').substring(0,58)}</td><td class="mono muted">${p[0]||''}</td><td style="font-size:11px;color:var(--text2)">${p[2]||'—'}</td><td class="mono">$${p[7]||''}</td><td class="mono amber">${p[8]||''}</td></tr>`;}).join(''));
 }
 
 function renderCSVPage(){
   const hist=JSON.parse(localStorage.getItem(HIST_KEY)||'{"ids":[],"linhas":[]}');
+  const copiedIds = getCopiedIds();
   const el=document.getElementById('csvPre');
-  document.getElementById('csv-count-label').textContent=hist.linhas.length?hist.linhas.length+' apostas — MASTER 2026':'0 apostas';
+  const naoCopiadas = hist.linhas.filter((_,i) => !copiedIds.has(hist.ids[i]));
+  document.getElementById('csv-count-label').textContent = `${hist.linhas.length} apostas — ${naoCopiadas.length} não copiadas`;
 
   if(!hist.linhas.length){
     el.innerHTML='<div class="empty-state">Nenhum dado. Gere o CSV no Dashboard primeiro.</div>';
@@ -1308,29 +1963,42 @@ function renderCSVPage(){
     return;
   }
 
-  // Store raw TSV for download
   const T='\t';
-  const header=COLS.join(T);
+  const header=['Data','Esporte','Tipster','Casa','Parceiro','Aposta','Descrição','Stake','Odd','Resultado'].join(T);
   el.dataset.full=[header,...hist.linhas].join('\n');
 
-  // Render editable table
-  const colW=['90px','80px','70px','90px','90px','90px','auto','75px','75px','75px'];
-  const colDefs=COLS.map((_,i)=>`<col style="width:${colW[i]}">`).join('');
-  const thead=COLS.map(c=>`<th>${c}</th>`).join('');
+  const colW=['90px','80px','90px','90px','90px','90px','auto','75px','75px','75px','40px'];
+  const colDefs=['Data','Esporte','Tipster','Casa','Parceiro','Aposta','Descrição','Stake','Odd','Resultado','✓'].map((_,i)=>`<col style="width:${colW[i]}">`).join('');
+  const thead=['Data','Esporte','Tipster','Casa','Parceiro','Aposta','Descrição','Stake','Odd','Resultado','✓'].map(c=>`<th>${c}</th>`).join('');
+
   const tbody=hist.linhas.map((ln,ri)=>{
+    const isCopied = copiedIds.has(hist.ids[ri]);
     const row=ln.split(T);
-    const cells=COLS.map((_,ci)=>{
+    const cells=['Data','Esporte','Tipster','Casa','Parceiro','Aposta','Descrição','Stake','Odd','Resultado'].map((_,ci)=>{
       const v=(row[ci]||'').trim();
       const res=ci===9;
       const cls=res?' class="col-res"':'';
       let color='';
-      if(res){if(v==='W')color='color:var(--green)';else if(v==='L')color='color:var(--red)';else if(v==='V')color='color:var(--amber)';}
-      return `<td><input${cls} value="${v.replace(/"/g,'&quot;')}" style="${color}" data-row="${ri}" data-col="${ci}" oninput="onPolyEdit(this)"/></td>`;
+      if(res){if(v==='W')color='color:var(--green)';else if(v==='L')color='color:var(--red)';}
+      return`<td><input${cls} value="${v.replace(/"/g,'&quot;')}" style="${color}" data-row="${ri}" data-col="${ci}" oninput="onPolyEdit(this)"/></td>`;
     }).join('');
-    return `<tr>${cells}</tr>`;
+    const chk = `<td style="text-align:center"><input type="checkbox" class="check-copied" ${isCopied?'checked':''} data-idx="${ri}" onchange="toggleCopied(this)"/></td>`;
+    return `<tr class="${isCopied?'row-copied':''}" id="csv-row-${ri}">${cells}${chk}</tr>`;
   }).join('');
 
   el.innerHTML=`<div style="overflow-x:auto"><table class="poly-tbl"><colgroup>${colDefs}</colgroup><thead><tr>${thead}</tr></thead><tbody id="poly-tbody">${tbody}</tbody></table></div>`;
+}
+
+function toggleCopied(chk) {
+  const idx = parseInt(chk.dataset.idx);
+  const hist = JSON.parse(localStorage.getItem(HIST_KEY)||'{"ids":[],"linhas":[]}');
+  const copiedIds = getCopiedIds();
+  if (chk.checked) copiedIds.add(hist.ids[idx]);
+  else copiedIds.delete(hist.ids[idx]);
+  saveCopiedIds(copiedIds);
+  const row = document.getElementById(`csv-row-${idx}`);
+  if (row) row.className = chk.checked ? 'row-copied' : '';
+  document.getElementById('csv-count-label').textContent = `${hist.linhas.length} apostas — ${hist.linhas.filter((_,i)=>!copiedIds.has(hist.ids[i])).length} não copiadas`;
 }
 
 function onPolyEdit(input){
@@ -1341,41 +2009,70 @@ function onPolyEdit(input){
     else if(v==='V')input.style.color='var(--amber)';
     else input.style.color='';
   }
-  // Rebuild full TSV
   const tbody=document.getElementById('poly-tbody');
   if(!tbody)return;
   const rows=Array.from(tbody.querySelectorAll('tr'));
   const T='\t';
-  const header=COLS.join(T);
-  const lines=rows.map(tr=>Array.from(tr.querySelectorAll('input')).map(i=>i.value).join(T));
+  const header=['Data','Esporte','Tipster','Casa','Parceiro','Aposta','Descrição','Stake','Odd','Resultado'].join(T);
+  const lines=rows.map(tr=>Array.from(tr.querySelectorAll('input[data-col]')).map(i=>i.value).join(T));
   document.getElementById('csvPre').dataset.full=[header,...lines].join('\n');
 }
 
 function copiarCSV(){
-  // CSV sem cabeçalho — para colar em planilha existente
+  // Only copy non-marked rows
   const tbody=document.getElementById('poly-tbody');
   if(!tbody)return;
+  const hist=JSON.parse(localStorage.getItem(HIST_KEY)||'{"ids":[],"linhas":[]}');
+  const copiedIds=getCopiedIds();
   const rows=Array.from(tbody.querySelectorAll('tr'));
-  const csv=rows.map(tr=>Array.from(tr.querySelectorAll('input')).map(i=>i.value).join('\t')).join('\n');
-  if(!csv)return;
-  navigator.clipboard.writeText(csv).then(()=>{const b=document.getElementById('btnCopiar');b.textContent='✓ Copiado!';setTimeout(()=>b.textContent='⎘ Copiar',2000);});
-}
-function baixarCSV(){
-  const t=document.getElementById('csvPre').dataset.full||'';if(!t)return;
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/tab-separated-values;charset=utf-8;'}));a.download=`polymarket_${new Date().toISOString().slice(0,10)}.tsv`;a.click();
-}
-function limparHistorico(){if(!confirm('Limpar todo o histórico local?'))return;localStorage.removeItem(HIST_KEY);renderHistorico();}
-async function limparERegerar(){
-  if(!confirm('Isso vai limpar o histórico atual e regenerar apenas com apostas resolvidas. Continuar?'))return;
-  localStorage.removeItem(HIST_KEY);await gerarCSV();renderHistorico();
+  const linesToCopy=[];
+  const newlyCopied=[];
+  rows.forEach((tr,i)=>{
+    if(copiedIds.has(hist.ids[i]))return;
+    const inputs=Array.from(tr.querySelectorAll('input[data-col]'));
+    linesToCopy.push(inputs.map(inp=>inp.value).join('\t'));
+    newlyCopied.push(i);
+  });
+  if(!linesToCopy.length){alert('Todas as apostas já foram copiadas!');return;}
+  navigator.clipboard.writeText(linesToCopy.join('\n')).then(()=>{
+    // Mark as copied automatically
+    newlyCopied.forEach(i=>copiedIds.add(hist.ids[i]));
+    saveCopiedIds(copiedIds);
+    renderCSVPage();
+    const b=document.getElementById('btnCopiar');
+    b.textContent=`✓ ${linesToCopy.length} copiadas!`;
+    setTimeout(()=>b.textContent='⎘ Copiar não-copiadas',2500);
+  });
 }
 
-// ── BOOT ──
+function baixarCSV(){
+  const t=document.getElementById('csvPre').dataset.full||'';
+  if(!t)return;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([t],{type:'text/tab-separated-values;charset=utf-8;'}));
+  a.download=`polymarket_${new Date().toISOString().slice(0,10)}.tsv`;
+  a.click();
+}
+
+function limparHistorico(){if(!confirm('Limpar todo o histórico local?'))return;localStorage.removeItem(HIST_KEY);renderHistorico();}
+async function limparERegerar(){
+  if(!confirm('Isso vai limpar o histórico e regenerar. Continuar?'))return;
+  localStorage.removeItem(HIST_KEY);
+  await gerarCSV();
+  renderHistorico();
+}
+
+// ═══════════════════════════════════════════════════
+//  KNOWLEDGE BASE (duplicate removed)
+// ═══════════════════════════════════════════════════
+
+// ─── BOOT ───
 const sw=localStorage.getItem(WALLET_KEY);
 if(sw){document.getElementById('walletInput').value=sw;setTimeout(buscar,500);}
 setInterval(()=>{const w=document.getElementById('walletInput').value.trim();if(w&&w.startsWith('0x'))buscar();},5*60*1000);
 initApiKey();
 initExtractors();
+initCalendar();
 </script>
 </body>
 </html>
