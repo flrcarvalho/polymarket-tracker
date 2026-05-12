@@ -302,7 +302,8 @@ table.poly-tbl td input.col-res{font-weight:700}
       </div>
       <div class="kpi-grid">
         <div class="kpi"><div class="kpi-label">Posições ativas</div><div class="kpi-val" id="k-ativas">—</div></div>
-        <div class="kpi"><div class="kpi-label">Valor em aberto</div><div class="kpi-val blue" id="k-valor">—</div><div class="kpi-sub" id="k-valor-brl"></div></div>
+        <div class="kpi"><div class="kpi-label">Investido (ativas)</div><div class="kpi-val blue" id="k-invested">—</div><div class="kpi-sub" id="k-invested-brl"></div></div>
+        <div class="kpi"><div class="kpi-label">Valor atual (ativas)</div><div class="kpi-val" id="k-valor">—</div><div class="kpi-sub" id="k-valor-brl"></div></div>
         <div class="kpi"><div class="kpi-label">P&amp;L encerradas</div><div class="kpi-val" id="k-pnl">—</div><div class="kpi-sub" id="k-pnl-brl"></div></div>
         <div class="kpi"><div class="kpi-label">Win rate</div><div class="kpi-val" id="k-wr">—</div></div>
         <div class="kpi"><div class="kpi-label">Stake média BRL</div><div class="kpi-val" id="k-stake-avg">—</div><div class="kpi-sub" id="k-stake-avg-usd"></div></div>
@@ -433,7 +434,7 @@ table.poly-tbl td input.col-res{font-weight:700}
 
     <!-- EXPORTAR CSV -->
     <div class="page" id="page-csv">
-      <div class="page-header"><div><div class="page-title">Exportar CSV</div><div class="page-sub">MASTER 2026 — sep TAB — decimal , — stake em BRL — data = partida (endDate)</div></div></div>
+      <div class="page-header"><div><div class="page-title">Exportar CSV</div><div class="page-sub">MASTER 2026 — sep TAB — decimal , — stake em BRL — data = partida (endDate corrigido: -1d se resolve 00h–06h UTC)</div></div></div>
       <div class="card">
         <div class="card-header">
           <span class="card-title" id="csv-count-label">0 apostas</span>
@@ -1196,7 +1197,48 @@ async function getDolarHoje(){
 
 function fmtObj(d){return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;}
 function parseISODate(str){if(!str)return null;if(/^\d{4}-\d{2}-\d{2}$/.test(str)){const[y,m,d]=str.split('-').map(Number);return new Date(y,m-1,d,12);}return new Date(str);}
-function parseDateFromPos(pos,isClosed){const ts=isClosed?(pos.endDate||pos.startDate||pos.createdAt):(pos.startDate||pos.createdAt);if(!ts)return null;if(typeof ts==='string'&&ts.includes('-'))return parseISODate(ts);return new Date(parseInt(ts)*(String(ts).length<=10?1000:1));}
+
+// Fix: Polymarket endDate is the market resolution time, not the game time.
+// Matches played late night (e.g. 23:30 ET) often resolve after midnight UTC,
+// making endDate 1 day later than the actual game date.
+// Rule: if endDate hour is between 0–6 UTC, subtract 1 day to get the real game date.
+function adjustPolyDate(dateObj) {
+  if (!dateObj) return null;
+  const h = dateObj.getUTCHours();
+  if (h >= 0 && h < 6) {
+    const adjusted = new Date(dateObj);
+    adjusted.setUTCDate(adjusted.getUTCDate() - 1);
+    return adjusted;
+  }
+  return dateObj;
+}
+
+function parseDateFromPos(pos, isClosed) {
+  let ts;
+  if (isClosed) {
+    ts = pos.endDate || pos.startDate || pos.createdAt;
+  } else {
+    ts = pos.startDate || pos.createdAt;
+  }
+  if (!ts) return null;
+
+  let d;
+  if (typeof ts === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(ts)) {
+    // Already a date-only string — no time component, take as-is
+    const [y, m, day] = ts.split('-').map(Number);
+    return new Date(y, m - 1, day, 12);
+  } else if (typeof ts === 'string') {
+    d = new Date(ts);
+  } else {
+    d = new Date(parseInt(ts) * (String(ts).length <= 10 ? 1000 : 1));
+  }
+
+  // Only apply the midnight-rollover correction for closed positions using endDate
+  if (isClosed && pos.endDate && !pos.startDate?.includes('T')) {
+    d = adjustPolyDate(d) || d;
+  }
+  return d;
+}
 function fmtDate(pos,isClosed=false){const d=parseDateFromPos(pos,isClosed);return d?fmtObj(d):'';}
 function fmtDateISO(pos,isClosed=false){const d=parseDateFromPos(pos,isClosed);if(!d)return'';const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${dd}`;}
 function calcOdd(pos){const p=parseFloat(pos.avgPrice||pos.price||0);return(p>0&&p<1)?1/p:1;}
@@ -1278,14 +1320,21 @@ async function renderDashboard(){
   const wr=(W+L)>0?W/(W+L)*100:0;
   const totalPnl=dadosFechados.reduce((s,p)=>s+parseFloat(p.cashPnl||0),0);
   const totalAtivo=dadosAtivos.reduce((s,p)=>s+parseFloat(p.currentValue||0),0);
+  const totalInvestido=dadosAtivos.reduce((s,p)=>s+parseFloat(p.initialValue||0),0);
+  const pnlAtivas=totalAtivo-totalInvestido;
   const stakeSum=dadosFechados.reduce((s,p)=>s+stakeUSD(p),0);
   const stakeAvg=dadosFechados.length?stakeSum/dadosFechados.length:0;
   const oddWSum=dadosFechados.reduce((s,p)=>s+calcOdd(p)*stakeUSD(p),0);
   const oddAvg=stakeSum>0?oddWSum/stakeSum:0;
   const dolar=dolarHoje?.val||null;
   sk('k-ativas',dadosAtivos.length,'');
-  sk('k-valor',fu(totalAtivo),'blue');
-  if(dolar) document.getElementById('k-valor-brl').textContent=fb(totalAtivo*dolar);
+  // Invested card
+  sk('k-invested',fu(totalInvestido),'blue');
+  if(dolar){document.getElementById('k-invested-brl').textContent=fb(totalInvestido*dolar);}
+  // Current value card with P/L indicator
+  sk('k-valor',fu(totalAtivo),pnlAtivas>=0?'green':'red');
+  const valorSub = document.getElementById('k-valor-brl');
+  if(valorSub) valorSub.textContent=(dolar?fb(totalAtivo*dolar)+' · ':'')+`P/L ativas: ${pnlAtivas>=0?'+':''}${fu(pnlAtivas)}`;
   sk('k-pnl',(totalPnl>=0?'+':'')+fu(totalPnl),totalPnl>=0?'green':'red');
   if(dolar) document.getElementById('k-pnl-brl').textContent=(totalPnl*dolar>=0?'+ ':'')+fb(totalPnl*dolar);
   sk('k-wr',wr.toFixed(1)+'%',wr>=50?'green':wr>0?'amber':'red');
@@ -1379,12 +1428,34 @@ function renderPosicoesAll(){
 }
 
 function detEs(t){
-  if(!t)return'E-Sports';const s=t.toLowerCase();
-  if(/valorant|vct/.test(s))return'E-Sports';if(/counter.strike|cs2|csgo|pgl|iem/.test(s))return'E-Sports';
-  if(/league of legends|\blol\b|lec|lck|lpl/.test(s))return'E-Sports';if(/dota|rocket league/.test(s))return'E-Sports';
-  if(/\bnba\b/.test(s))return'NBA';if(/\bnfl\b/.test(s))return'NFL';if(/\bnhl\b/.test(s))return'NHL';
-  if(/premier|champions league|bundesliga|serie a|la liga/.test(s))return'Futebol';
-  if(/tennis|atp|wta/.test(s))return'Tênis';if(/\bmma\b|\bufc\b/.test(s))return'MMA';
+  if(!t)return'E-Sports';
+  const s=t.toLowerCase();
+  // Detailed esport subcategories
+  if(/valorant|vct/.test(s))return'Valorant';
+  if(/counter.strike|cs2|csgo|pgl.*cs|iem.*cs|nodwin|blast.*cs|esl.*cs/.test(s))return'CS2';
+  if(/league of legends|\blol\b|lec|lck|lpl|lcs|vcs|pcs|cblol/.test(s))return'League of Legends';
+  if(/dota\b|ti\d|the international/.test(s))return'Dota 2';
+  if(/rocket league|rlcs/.test(s))return'Rocket League';
+  if(/call of duty|cod\b|cdl/.test(s))return'Call of Duty';
+  if(/overwatch|owl\b/.test(s))return'Overwatch';
+  if(/rainbow six|r6/.test(s))return'Rainbow Six';
+  if(/fortnite/.test(s))return'Fortnite';
+  if(/apex legends/.test(s))return'Apex Legends';
+  if(/pubg/.test(s))return'PUBG';
+  if(/starcraft|sc2/.test(s))return'StarCraft';
+  if(/\bnba\b/.test(s))return'NBA';
+  if(/\bnfl\b/.test(s))return'NFL';
+  if(/\bnhl\b/.test(s))return'NHL';
+  if(/premier|champions league|bundesliga|serie a|la liga|brasileirao|copa/.test(s))return'Futebol';
+  if(/tennis|atp|wta/.test(s))return'Tênis';
+  if(/\bmma\b|\bufc\b/.test(s))return'MMA';
+  // Generic game handicap / map handicap → try to infer
+  if(/\bgame handicap\b|\bmap handicap\b/.test(s)){
+    if(/lol\b|hanwha|kt rolster|movistar koi|g2.*esports|nongshim|karmine/.test(s))return'League of Legends';
+    if(/tes\b|t1\b|bnk fearx|dplus|giantx/.test(s))return'League of Legends';
+    if(/sinners|gamelegion|g2.*cs|mouz|b8\b|betboom|tdk\b/.test(s))return'CS2';
+    return'E-Sports';
+  }
   return'E-Sports';
 }
 
@@ -1411,36 +1482,73 @@ function setResCustomDate() {
 }
 
 function getResRows() {
-  // Build rows from history + assign tipsters
+  // Build rows from history. The hist stores stake in BRL (converted) and odd.
+  // To match Dashboard numbers we need P/L in USD.
+  // We cross-reference dadosFechados by conditionId to get the real cashPnl (USD).
   const hist = JSON.parse(localStorage.getItem(HIST_KEY) || '{"ids":[],"linhas":[]}');
   const assign = getTipsterAssign();
-  // Parse hist lines (TSV)
+
+  // Build a lookup: hist id → fechada position (for real cashPnl)
+  // The hist ids are built as title__date__stakeUSD__c
+  // We match by iterating dadosFechados
+  const closedByIdx = {};
+  hist.ids.forEach((hid, i) => {
+    const match = dadosFechados.find(pos => makeId(pos,'__c') === hid);
+    if (match) closedByIdx[i] = match;
+  });
+
+  const dolar = dolarHoje?.val || null;
+
   const rows = hist.linhas.map((ln, idx) => {
     const p = ln.split('\t');
-    // Find conditionId for this entry from dadosFechados by matching title/date
-    // Use position: dateStr/title matching
-    const dateStr = (p[0]||'').trim(); // DD/MM/YYYY
-    const desc = (p[6]||'').trim();
-    let tipster = (p[2]||'').trim();
-    // Try to find a conditionId match from dadosFechados
-    if (!tipster) {
-      const match = dadosFechados.find(pos => {
-        const d = fmtDate(pos, true);
-        return d === dateStr;
-      });
-      if (match && match.conditionId) tipster = assign[match.conditionId] || '';
-    }
-    const stakeRaw = parseFloat((p[7]||'0').replace(',','.')) || 0;
-    const oddRaw = parseFloat((p[8]||'1').replace(',','.')) || 1;
+    const dateStr = (p[0]||'').trim();
     const resultado = (p[9]||'').trim();
-    const lucro = resultado === 'W' ? stakeRaw * (oddRaw - 1) : resultado === 'L' ? -stakeRaw : 0;
-    // parse date to ISO
+    const stakeRaw = parseFloat((p[7]||'0').replace(',','.')) || 0; // BRL
+    const oddRaw = parseFloat((p[8]||'1').replace(',','.')) || 1;
+    let tipster = (p[2]||'').trim();
+
+    // Get real USD stake and cashPnl from API position if available
+    const apiPos = closedByIdx[idx];
+    let stakeUSD_val = 0;
+    let lucroUSD = 0;
+
+    if (apiPos) {
+      stakeUSD_val = stakeUSD(apiPos);
+      lucroUSD = parseFloat(apiPos.cashPnl || 0);
+      // Use stored tipster from assign
+      if (!tipster && apiPos.conditionId) tipster = assign[apiPos.conditionId] || '';
+    } else {
+      // Fallback: convert BRL stake back to USD using cotação
+      stakeUSD_val = dolar && dolar > 0 ? stakeRaw / dolar : stakeRaw;
+      lucroUSD = resultado === 'W' ? stakeUSD_val * (oddRaw - 1) : resultado === 'L' ? -stakeUSD_val : 0;
+      // Try to get tipster from assign by date match
+      if (!tipster) {
+        const match = dadosFechados.find(pos => fmtDate(pos, true) === dateStr);
+        if (match?.conditionId) tipster = assign[match.conditionId] || '';
+      }
+    }
+
     let isoDate = '';
     if (dateStr.includes('/')) {
       const pts = dateStr.split('/');
       if (pts.length === 3) isoDate = `${pts[2]}-${pts[1].padStart(2,'0')}-${pts[0].padStart(2,'0')}`;
     } else isoDate = dateStr;
-    return { date: isoDate, dateDisplay: dateStr, esporte: (p[1]||'E-Sports').trim(), tipster, casa: (p[3]||'Polymarket').trim(), parceiro: (p[4]||'').trim(), aposta: (p[5]||'').trim(), desc, stake: stakeRaw, odd: oddRaw, resultado, lucro };
+
+    return {
+      date: isoDate,
+      dateDisplay: dateStr,
+      esporte: (p[1]||'E-Sports').trim(),
+      tipster,
+      casa: (p[3]||'Polymarket').trim(),
+      parceiro: (p[4]||'').trim(),
+      aposta: (p[5]||'').trim(),
+      desc: (p[6]||'').trim(),
+      stake: stakeUSD_val,    // USD stake
+      stakeBRL: stakeRaw,     // BRL stake (for display)
+      odd: oddRaw,
+      resultado,
+      lucro: lucroUSD,        // real USD P/L from API
+    };
   }).filter(r => r.stake > 0 || r.resultado);
 
   // Filter by period
@@ -1930,7 +2038,13 @@ function renderResSportCards(rows) {
 
   const ents = Object.entries(sportMap).sort((a,b) => b[1].stake - a[1].stake);
 
-  const sportEmojis = { 'E-Sports':'🎮','NBA':'🏀','Futebol':'⚽','Tênis':'🎾','MMA':'🥊','NFL':'🏈','NHL':'🏒','Basquete':'🏀','CS':'🖱️' };
+  const sportEmojis = {
+    'Valorant':'🎯','CS2':'🖱️','League of Legends':'🏆','Dota 2':'🔮',
+    'Rocket League':'🚀','Call of Duty':'🔫','Overwatch':'🦸','Rainbow Six':'🪖',
+    'Fortnite':'🏗️','Apex Legends':'🎮','PUBG':'🎮','StarCraft':'👾',
+    'E-Sports':'🎮','NBA':'🏀','NFL':'🏈','NHL':'🏒','Futebol':'⚽',
+    'Tênis':'🎾','MMA':'🥊','CS':'🖱️','Basquete':'🏀',
+  };
 
   cardsEl.innerHTML = ents.map(([sport, d]) => {
     const roi = d.stake > 0 ? (d.pl/d.stake)*100 : 0;
