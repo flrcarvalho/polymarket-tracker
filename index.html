@@ -1703,7 +1703,7 @@ function renderCalendar(){
   const _sym=_isBRL?'R$':'$';
   const _loc=_isBRL?'pt-BR':'en-US';
   function _fmt(v){const cv=v*_rate;return(cv>=0?'+ ':'- ')+_sym+' '+Math.abs(cv).toLocaleString(_loc,{minimumFractionDigits:2,maximumFractionDigits:2});}
-  function _fmtDay(v){const cv=v*_rate;return(cv>=0?'+':'')+Math.round(Math.abs(cv)).toLocaleString(_loc);}
+  function _fmtDay(v){const cv=v*_rate;return(cv>=0?'+':'-')+_sym+' '+Math.round(Math.abs(cv)).toLocaleString(_loc);}
 
   const hist=JSON.parse(localStorage.getItem(HIST_KEY)||'{"ids":[],"linhas":[]}');
   const dayMap={};
@@ -1950,7 +1950,7 @@ const POLYGON_RPC = 'https://polygon-rpc.com';
 // Collateral tokens on Polygon
 const USDC_NATIVE = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359'; // native USDC (Circle)
 const USDC_E      = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'; // USDC.e (bridged)
-const PUSD        = '0x4fA30Cd1F85d0b8EC7F8edCa7F5e04a8d3d3A2e6'; // pUSD (Polymarket Apr 2026)
+const PUSD        = '0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB'; // pUSD verified on PolygonScan // pUSD (Polymarket Apr 2026)
 
 async function erc20BalanceOf(tokenAddr, walletAddr) {
   const callData = '0x70a08231' + walletAddr.replace('0x','').toLowerCase().padStart(64,'0');
