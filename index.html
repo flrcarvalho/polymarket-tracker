@@ -1350,6 +1350,7 @@ async function buscar(){
     if(!rA.ok)throw new Error('HTTP '+rA.status);
     let[todasPos,activity]=await Promise.all([rA.json(),rAct.ok?rAct.json():[]]);
     todasPos=Array.isArray(todasPos)?todasPos:[];
+    window._polyActivity=Array.isArray(activity)?activity:[];
     dadosFechados=todasPos.filter(p=>p.redeemable===true&&parseFloat(p.currentValue||0)===0);
     dadosAtivos=todasPos.filter(p=>!(p.redeemable===true&&parseFloat(p.currentValue||0)===0));
     const activeCids=new Set(todasPos.map(p=>p.conditionId).filter(Boolean));
@@ -1945,60 +1946,63 @@ function limparHistorico(){if(!confirm('Limpar todo o histórico local?'))return
 async function limparERegerar(){if(!confirm('Isso vai limpar o histórico e regenerar. Continuar?'))return;localStorage.removeItem(HIST_KEY);await gerarCSV();renderHistorico();}
 
 // ─── WALLET BALANCE ───
-// Polygon RPC endpoints (try multiple for CORS fallback)
-const POLYGON_RPCS = [
-  'https://polygon-rpc.com',
-  'https://rpc-mainnet.matic.quiknode.pro',
-  'https://matic-mainnet.chainstacklabs.com',
-];
-// pUSD = Polymarket collateral (verified on PolygonScan: 0xC011...)
-const PUSD   = '0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB';
-const USDC_E = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
+// ── WALLET BALANCE ──────────────────────────────────
+// Strategy: gamma-api profiles returns portfolioValue + cashBalance
+// These match exactly what Polymarket UI shows:
+//   portfolioValue = "Portfolio" ($881.41 = positions + cash)  
+//   cashBalance    = "Available to trade" ($787.23)
+// Fallback: compute from activity records already fetched
 
-async function erc20BalanceOf(tokenAddr, walletAddr) {
-  const callData = '0x70a08231' + walletAddr.replace('0x','').toLowerCase().padStart(64,'0');
-  for (const rpc of POLYGON_RPCS) {
-    try {
-      const resp = await fetch(rpc, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({jsonrpc:'2.0',method:'eth_call',params:[{to:tokenAddr,data:callData},'latest'],id:1})
-      });
-      const j = await resp.json();
-      if (j.result && j.result.length > 2 && j.result !== '0x0') {
-        const val = parseInt(j.result, 16);
-        if (val > 0) return val / 1e6;
-      }
-      return 0; // valid response, balance is zero — stop here
-    } catch(e) { /* CORS or network error, try next RPC */ }
-  }
-  return 0;
-}
-
-async function fetchWalletBalances(walletAddr) {
-  // pUSD = "Available to trade" cash shown on Polymarket
-  // USDC.e = old collateral (users may still have some)
-  // The walletAddr IS the Polymarket proxy wallet (the address shown on polymarket.com)
+async function fetchWalletData(walletAddr) {
+  // Strategy 1: gamma-api profile (most reliable, matches Polymarket UI)
   try {
-    const [pusd, usdce] = await Promise.all([
-      erc20BalanceOf(PUSD, walletAddr),
-      erc20BalanceOf(USDC_E, walletAddr)
-    ]);
-    const available = pusd + usdce;
-    console.log('[Wallet]', {pusd, usdce, available, addr: walletAddr.slice(0,10)+'...'});
-    const parts = [];
-    if (pusd > 0)  parts.push({label:'pUSD', val:pusd});
-    if (usdce > 0) parts.push({label:'USDC.e', val:usdce});
-    return { available, parts, source: 'rpc' };
-  } catch(e) {
-    console.warn('[Wallet] failed:', e);
-    return { available: 0, parts: [], source: 'none' };
-  }
+    const r = await fetch('https://gamma-api.polymarket.com/profiles?id=' + walletAddr, {
+      headers: {'Accept':'application/json'}
+    });
+    if (r.ok) {
+      const data = await r.json();
+      const p = Array.isArray(data) ? data[0] : data;
+      if (p) {
+        // Try all possible field names the profile API might use
+        const cash = parseFloat(
+          p.cashBalance ?? p.availableBalance ?? p.cash ?? p.collateral ?? p.usdcBalance ?? -1
+        );
+        const portfolio = parseFloat(
+          p.portfolioValue ?? p.totalValue ?? p.value ?? -1
+        );
+        console.log('[Gamma Profile]', JSON.stringify(p).slice(0, 300));
+        if (cash >= 0) return { cash, portfolio: portfolio >= 0 ? portfolio : null, source: 'gamma' };
+      }
+    }
+  } catch(e) { console.warn('[Gamma]', e.message); }
+
+  // Strategy 2: compute cash from activity (already loaded in memory)
+  // activity records have: type, side, usdcSize
+  // Cash = sum(SELLs + REDEEMs + MERGEs + REWARDs) - sum(BUYs + SPLITs)
+  try {
+    if (window._polyActivity && window._polyActivity.length > 0) {
+      let cash = 0;
+      for (const a of window._polyActivity) {
+        const amt = parseFloat(a.usdcSize || a.cashAmount || 0);
+        if (a.type === 'TRADE') {
+          if (a.side === 'BUY')  cash -= amt;
+          if (a.side === 'SELL') cash += amt;
+        } else if (a.type === 'REDEEM' || a.type === 'MERGE' || a.type === 'REWARD') {
+          cash += amt;
+        } else if (a.type === 'SPLIT') {
+          cash -= amt;
+        }
+      }
+      console.log('[Activity Cash]', cash.toFixed(2), 'from', window._polyActivity.length, 'records');
+      if (cash > 0) return { cash, portfolio: null, source: 'activity' };
+    }
+  } catch(e) {}
+
+  return { cash: 0, portfolio: null, source: 'none' };
 }
 
 async function fetchPortfolioValue(walletAddr) {
-  // data-api/value = total current value of ALL open positions
-  // = "Portfolio" shown on polymarket.com
+  // data-api/value = current market value of ALL open positions
   try {
     const r = await fetch('https://data-api.polymarket.com/value?user=' + walletAddr);
     if (!r.ok) return null;
@@ -2016,49 +2020,42 @@ async function renderWalletCards(walletAddr) {
   const sym = isBRL ? 'R$' : '$';
   function dv(v){ return sym + ' ' + (v * rate).toFixed(2).replace('.',','); }
 
-  // Set loading state
   ['k-portfolio','k-balance','k-total-wallet','k-pct-positions'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.textContent = '…'; el.className = 'kpi-val muted'; }
   });
 
-  const [balances, portfolioVal] = await Promise.all([
-    fetchWalletBalances(walletAddr),
+  const [walletData, positionsVal] = await Promise.all([
+    fetchWalletData(walletAddr),
     fetchPortfolioValue(walletAddr)
   ]);
 
-  const available = balances.available;
-  const portfolio = portfolioVal !== null ? portfolioVal : parseFloat(document.getElementById('k-valor')?.textContent?.replace(/[^0-9.]/g,'') || 0);
-  const total = available + portfolio;
+  const cash = walletData.cash || 0;
+  const portfolio = positionsVal !== null ? positionsVal : 0;
+  const total = cash + portfolio;
   const pct = total > 0 ? (portfolio / total * 100) : 0;
+  const src = walletData.source;
 
-  // Portfolio card
+  // Portfólio (posições) card — data-api/value
   const pEl = document.getElementById('k-portfolio');
   if (pEl) { pEl.textContent = dv(portfolio); pEl.className = 'kpi-val blue'; }
   const pBrl = document.getElementById('k-portfolio-brl');
-  if (pBrl) pBrl.textContent = isBRL ? '' : (dolar ? '≈ ' + fb(portfolio * dolar) : '');
+  if (pBrl) pBrl.textContent = !isBRL && dolar ? '≈ ' + fb(portfolio * dolar) : '';
 
-  // Available balance card
+  // Cash disponível card — gamma profile or activity
   const bEl = document.getElementById('k-balance');
-  if (bEl) { bEl.textContent = dv(available); bEl.className = 'kpi-val' + (available > 0 ? ' green' : ''); }
+  if (bEl) { bEl.textContent = dv(cash); bEl.className = 'kpi-val' + (cash > 0 ? ' green' : ''); }
   const bBrl = document.getElementById('k-balance-brl');
-  let bSubText = '';
-  if (balances.parts && balances.parts.length > 0) {
-    bSubText = balances.parts.map(p=>p.label+' '+p.val.toFixed(2)).join(' · ');
-  } else if (!isBRL && dolar && available > 0) {
-    bSubText = '≈ ' + fb(available * dolar);
-  } else {
-    bSubText = 'verificando on-chain...';
-  }
-  if (bBrl) bBrl.textContent = bSubText;
+  const srcLabel = src === 'gamma' ? 'via Polymarket API' : src === 'activity' ? 'calculado via activity' : 'não disponível';
+  if (bBrl) bBrl.textContent = (!isBRL && dolar && cash > 0) ? '≈ ' + fb(cash * dolar) : srcLabel;
 
-  // Total wallet card
+  // Total na carteira
   const tEl = document.getElementById('k-total-wallet');
   if (tEl) { tEl.textContent = dv(total); tEl.className = 'kpi-val' + (total > 0 ? ' green' : ''); }
   const tBrl = document.getElementById('k-total-wallet-brl');
-  if (tBrl) tBrl.textContent = isBRL ? '' : (dolar ? '≈ ' + fb(total * dolar) : '');
+  if (tBrl) tBrl.textContent = !isBRL && dolar ? '≈ ' + fb(total * dolar) : '';
 
-  // % in positions
+  // % em posições
   const pctEl = document.getElementById('k-pct-positions');
   if (pctEl) { pctEl.textContent = pct.toFixed(1) + '%'; pctEl.className = 'kpi-val amber'; }
   const pctSub = document.getElementById('k-pct-positions-sub');
