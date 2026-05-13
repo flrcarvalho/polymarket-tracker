@@ -1214,13 +1214,9 @@ function setResCurrency(cur){
     btnBrl.className='cur-btn'+(cur==='brl'?' active-brl':'');
   }
   const dolar=dolarHoje?.val||null;
-  if(cotCard){
-    if(cur==='brl'&&dolar){
-      cotCard.textContent=`1 USD = R$ ${nf(dolar,4)} · ${dolarHoje.str}`;
-      cotCard.classList.add('visible');
-    } else {
-      cotCard.classList.remove('visible');
-    }
+  if(cotCard&&dolar){
+    cotCard.textContent=`1 USD = R$ ${nf(dolar,4)} · ${dolarHoje.str}`;
+    cotCard.classList.add('visible');
   }
   const rows=getResRows();
   renderResKPIs(rows);
@@ -1558,9 +1554,9 @@ function renderResultados(){
   const rows=getResRows();
   const dolar=dolarHoje?.val||null;
   const cotCard=document.getElementById('cotacao-card');
-  if(cotCard){
-    if(resCurrency==='brl'&&dolar){cotCard.textContent=`1 USD = R$ ${nf(dolar,4)} · ${dolarHoje.str}`;cotCard.classList.add('visible');}
-    else cotCard.classList.remove('visible');
+  if(cotCard&&dolar){
+    cotCard.textContent=`1 USD = R$ ${nf(dolar,4)} · ${dolarHoje.str}`;
+    cotCard.classList.add('visible');
   }
   renderResKPIs(rows);
   renderResPLChart(rows);
@@ -1700,6 +1696,15 @@ function calNext(){const sel=document.getElementById('cal-month-sel');const opts
 function renderCalendar(){
   const sel=document.getElementById('cal-month-sel');if(sel&&sel.value)calCurrentMonth=sel.value;if(!calCurrentMonth)return;
   const cont=document.getElementById('cal-container');if(!cont)return;
+  // Currency setup
+  const _dolar=dolarHoje?.val||null;
+  const _isBRL=resCurrency==='brl';
+  const _rate=_isBRL&&_dolar?_dolar:1;
+  const _sym=_isBRL?'R$':'$';
+  const _loc=_isBRL?'pt-BR':'en-US';
+  function _fmt(v){const cv=v*_rate;return(cv>=0?'+ ':'- ')+_sym+' '+Math.abs(cv).toLocaleString(_loc,{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function _fmtDay(v){const cv=v*_rate;return(cv>=0?'+':'')+Math.round(Math.abs(cv)).toLocaleString(_loc);}
+
   const hist=JSON.parse(localStorage.getItem(HIST_KEY)||'{"ids":[],"linhas":[]}');
   const dayMap={};
   hist.linhas.forEach(ln=>{
@@ -1719,7 +1724,7 @@ function renderCalendar(){
   const monthPl=Object.values(dayMap).reduce((s,v)=>s+v.pl,0);
   const monthBets=Object.values(dayMap).reduce((s,v)=>s+v.n,0);
   const plEl=document.getElementById('cal-month-pl');const betsEl=document.getElementById('cal-month-bets');
-  if(plEl){plEl.textContent=(monthPl>=0?'+ ':'- ')+'R$ '+Math.abs(monthPl).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});plEl.style.color=monthPl>=0?'var(--green)':'var(--red)';}
+  if(plEl){plEl.textContent=_fmt(monthPl);plEl.style.color=monthPl>=0?'var(--green)":'var(--red)';}
   if(betsEl)betsEl.textContent=monthBets+' apostas';
   const today=new Date().toISOString().slice(0,10);
   const allPls=Object.values(dayMap).map(v=>Math.abs(v.pl));
@@ -1732,11 +1737,12 @@ function renderCalendar(){
   for(let d=1;d<=daysInMonth;d++){
     const key=`${yr}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const data=dayMap[key];const isToday=key===today;
-    if(!data){html+=`<div class="cal-day${isToday?' today-day':''}" style="background:var(--bg4);opacity:.4;border:1px solid ${isToday?'var(--blue)':'transparent'}"><div class="cal-day-num" style="color:var(--text3)">${d}</div></div>`;}
-    else{const bg=dayBg(data.pl);const txtColor=Math.abs(data.pl)/maxAbs>0.5?'#fff':(data.pl>=0?'var(--green)':'var(--red)');html+=`<div class="cal-day has-data" style="background:${bg};border-color:${isToday?'var(--blue)':bg}"><div class="cal-day-num" style="color:${txtColor}">${d}</div><div class="cal-day-pl" style="color:${txtColor};font-size:11px">${(()=>{const cv=data.pl*_calRate;return(cv>=0?'+':'')+Math.round(Math.abs(cv)).toLocaleString(_calBRL?'pt-BR':'en-US');})()}</div><div class="cal-day-bets" style="color:${txtColor}">${data.n}b</div></div>`;}
+    if(!data){html+=`<div class="cal-day${isToday?' today-day':''}" style="background:var(--bg4);opacity:.4;border:1px solid ${isToday?'var(--blue)":'transparent'}"><div class="cal-day-num" style="color:var(--text3)">${d}</div></div>`;}
+    else{const bg=dayBg(data.pl);const txtColor=Math.abs(data.pl)/maxAbs>0.5?'#fff':(data.pl>=0?'var(--green)":'var(--red)');html+=`<div class="cal-day has-data" style="background:${bg};border-color:${isToday?'var(--blue)":bg}"><div class="cal-day-num" style="color:${txtColor}">${d}</div><div class="cal-day-pl" style="color:${txtColor};font-size:11px">${_fmtDay(data.pl)}</div><div class="cal-day-bets" style="color:${txtColor}">${data.n}b</div></div>`;}
   }
   html+=`</div>`;cont.innerHTML=html;
 }
+
 
 function renderResDonut(rows){
   const canvas=document.getElementById('chartResDonut');if(!canvas)return;
@@ -1941,57 +1947,45 @@ async function limparERegerar(){if(!confirm('Isso vai limpar o histórico e rege
 
 // ─── WALLET BALANCE ───
 const POLYGON_RPC = 'https://polygon-rpc.com';
-// pUSD = new Polymarket collateral (April 2026 upgrade), USDC.e = old
-// These are the proxy wallet balances
-const USDC_E = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
-// pUSD: verify via Polymarket docs — 1:1 USDC-backed ERC-20 on Polygon
-const PUSD   = '0x4fA30Cd1F85d0b8EC7F8edCa7F5e04a8d3d3A2e6';
+// Collateral tokens on Polygon
+const USDC_NATIVE = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359'; // native USDC (Circle)
+const USDC_E      = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'; // USDC.e (bridged)
+const PUSD        = '0x4fA30Cd1F85d0b8EC7F8edCa7F5e04a8d3d3A2e6'; // pUSD (Polymarket Apr 2026)
 
 async function erc20BalanceOf(tokenAddr, walletAddr) {
-  const data = '0x70a08231' + walletAddr.replace('0x','').toLowerCase().padStart(64,'0');
+  const callData = '0x70a08231' + walletAddr.replace('0x','').toLowerCase().padStart(64,'0');
   try {
     const resp = await fetch(POLYGON_RPC, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({jsonrpc:'2.0',method:'eth_call',params:[{to:tokenAddr,data},'latest'],id:1})
+      body: JSON.stringify({jsonrpc:'2.0',method:'eth_call',params:[{to:tokenAddr,data:callData},'latest'],id:1})
     });
     const j = await resp.json();
-    if (j.result && j.result !== '0x' && j.result !== '0x0') {
-      return parseInt(j.result, 16) / 1e6;
+    if (j.result && j.result.length > 2 && j.result !== '0x0') {
+      const val = parseInt(j.result, 16);
+      return val > 0 ? val / 1e6 : 0;
     }
   } catch(e) {}
   return 0;
 }
 
 async function fetchWalletBalances(walletAddr) {
-  // Strategy 1: gamma-api profile (returns available USDC balance directly)
+  // Try all 3 stablecoin contracts in parallel
   try {
-    const r = await fetch('https://gamma-api.polymarket.com/profiles?id=' + walletAddr);
-    if (r.ok) {
-      const data = await r.json();
-      const profile = Array.isArray(data) ? data[0] : data;
-      if (profile) {
-        // gamma profile has cashBalance or availableBalance field
-        const avail = parseFloat(profile.cashBalance ?? profile.availableBalance ?? profile.balance ?? -1);
-        if (avail >= 0) {
-          return { pusd: avail, usdce: 0, available: avail, source: 'gamma' };
-        }
-      }
-    }
-  } catch(e) {}
-
-  // Strategy 2: Polygon RPC — check both pUSD and USDC.e
-  try {
-    const [pusd, usdce] = await Promise.all([
+    const [pusd, usdcNative, usdce] = await Promise.all([
       erc20BalanceOf(PUSD, walletAddr),
+      erc20BalanceOf(USDC_NATIVE, walletAddr),
       erc20BalanceOf(USDC_E, walletAddr)
     ]);
-    if (pusd > 0 || usdce > 0) {
-      return { pusd, usdce, available: pusd + usdce, source: 'rpc' };
-    }
-  } catch(e) {}
-
-  return { pusd: 0, usdce: 0, available: 0, source: 'none' };
+    const available = pusd + usdcNative + usdce;
+    const parts = [];
+    if (pusd > 0)       parts.push({label:'pUSD', val:pusd});
+    if (usdcNative > 0) parts.push({label:'USDC', val:usdcNative});
+    if (usdce > 0)      parts.push({label:'USDC.e', val:usdce});
+    return { available, parts, source: available > 0 ? 'rpc' : 'none' };
+  } catch(e) {
+    return { available: 0, parts: [], source: 'none' };
+  }
 }
 
 async function fetchPortfolioValue(walletAddr) {
@@ -2005,7 +1999,6 @@ async function fetchPortfolioValue(walletAddr) {
   } catch(e) {}
   return null;
 }
-
 async function renderWalletCards(walletAddr) {
   const dolar = dolarHoje?.val || null;
   const isBRL = dashCurrency === 'brl';
@@ -2040,9 +2033,13 @@ async function renderWalletCards(walletAddr) {
   if (bEl) { bEl.textContent = dv(available); bEl.className = 'kpi-val' + (available > 0 ? ' green' : ''); }
   const bBrl = document.getElementById('k-balance-brl');
   let bSubText = '';
-  if (balances.source === 'gamma') bSubText = 'via Polymarket';
-  else if (balances.source === 'rpc') { const parts=[]; if(balances.pusd>0)parts.push('pUSD '+balances.pusd.toFixed(2)); if(balances.usdce>0)parts.push('USDC.e '+balances.usdce.toFixed(2)); bSubText=parts.join(' · ');}
-  if (!bSubText && !isBRL && dolar) bSubText = '≈ ' + fb(available * dolar);
+  if (balances.parts && balances.parts.length > 0) {
+    bSubText = balances.parts.map(p=>p.label+' '+p.val.toFixed(2)).join(' · ');
+  } else if (!isBRL && dolar && available > 0) {
+    bSubText = '≈ ' + fb(available * dolar);
+  } else if (available === 0) {
+    bSubText = 'não detectado via RPC';
+  }
   if (bBrl) bBrl.textContent = bSubText;
 
   // Total wallet card
