@@ -604,18 +604,19 @@ const DARTS_TOURS = ['pdc','bdo','wdf','premier league darts','world championshi
 const TENNIS_TOURS = ['atp','wta','grand slam','australian open','roland garros','wimbledon','us open','french open','oeiras','madrid open','rome','monte carlo','miami open','indian wells','barcelona open','estoril','brd nastase','bucharest'];
 // E-sports games
 const ESPORTS_GAMES = {
-  'Valorant': ['valorant','vct'],
-  'CS2': ['counter-strike','cs2','csgo','pgl.*cs','iem.*cs','nodwin','blast.*cs','esl.*cs','sinners','gamelegion','natus vincere','faze.*cs','vitality.*cs','mouz','b8 team','betboom team','heroic','astralis','spirit.*cs','bb team'],
-  'League of Legends': ['league of legends','\\blol\\b','lec','lck','lpl','lcs','vcs','pcs','cblol','hanwha','kt rolster','movistar koi','g2 esports','nongshim','karmine','giantx','t1 ','bnk fearx','dplus','dplus kia','gen.g','cloud9.*lol','100 thieves.*lol','team liquid.*lol','fnatic.*lol','mad lions'],
-  'Dota 2': ['dota\\b','ti\\d','the international.*dota'],
-  'Rocket League': ['rocket league','rlcs'],
+  'Valorant': ['valorant','vct','sentinels','loud.*valo','furia.*valo','leviatan','leviatán','loud esports','loud.*val','nrg.*val','100t.*val','evil geniuses.*val','cloud9.*val','team liquid.*val','mibr.*val','fnatic.*val','paper rex','drx.*val','prx','gen.g.*val','zeta.*val','bilibili.*val','team vitality.*val','guild.*val','bbl.*val','fut.*val','navi.*val','kru esports','kru ','eg.*val','c9.*val'],
+  'CS2': ['counter-strike','cs2','csgo','pgl.*cs','iem.*cs','nodwin','blast.*cs','esl.*cs','sinners','gamelegion','natus vincere','navi.*cs','faze.*cs','vitality.*cs','mouz','b8 team','betboom team','heroic','astralis','spirit.*cs','bb team','faze clan','team spirit','apeks','complexity','9z team','outsiders','entropiq','big.*cs','big clan','fnatic.*cs','virtus.pro'],
+  'League of Legends': ['league of legends','\\blol\\b','lec','lck','lpl','lcs','vcs','pcs','cblol','hanwha','kt rolster','movistar koi','g2 esports','nongshim','karmine','giantx','t1 ','bnk fearx','dplus','dplus kia','gen.g','cloud9.*lol','100 thieves.*lol','team liquid.*lol','fnatic.*lol','mad lions','weibo gaming','jdg','bilibili gaming','blg','top esports','tes','edward gaming','edg','rng.*lol','lng','nip.*lol','flyquest','dignitas.*lol','aurora.*lol','sk gaming','vitality.*lol','fnc.*lol'],
+  'Dota 2': ['dota\\b','ti\\d','the international.*dota','liquid.*dota','og.*dota','team secret','psg.lgd','lgd','team aster','virtus.pro.*dota','tundra esports','gaimin gladiators','9pandas','beastcoast'],
+  'Rocket League': ['rocket league','rlcs','team bds','nrg.*rl','faze.*rl','g2.*rl','complexity.*rl','twist.*rl'],
   'Call of Duty': ['call of duty','\\bcod\\b','cdl','paris gentle mates','miami heretics','los angeles thieves','toronto ultra','new york subliners','optic texas','los angeles guerrillas','minnesota rokkr','seattle surge','atlanta faze','boston breach','london royal ravens','florida mutineers'],
-  'Overwatch': ['overwatch','\\bowl\\b'],
-  'Rainbow Six': ['rainbow six','\\br6\\b'],
-  'Fortnite': ['fortnite'],
-  'Apex Legends': ['apex legends'],
-  'PUBG': ['\\bpubg\\b'],
-  'StarCraft': ['starcraft','\\bsc2\\b'],
+  'Overwatch': ['overwatch','\\bowl\\b','overwatch league'],
+  'Rainbow Six': ['rainbow six','\\br6\\b','siege'],
+  'Fortnite': ['fortnite','fncs'],
+  'Apex Legends': ['apex legends','algs'],
+  'PUBG': ['\\bpubg\\b','pubg mobile'],
+  'StarCraft': ['starcraft','\\bsc2\\b','\\bbroodwar\\b'],
+  'VALORANT': [],
 };
 
 function detEs(t) {
@@ -663,10 +664,10 @@ function detEs(t) {
   }
 
   // Generic e-sports indicators (map handicap, game handicap without clear game)
-  if (/\bmap handicap\b|\bgame handicap\b|\besports\b|\be-sports\b/.test(s)) {
-    // Try to infer from team names in specific games
+  if (/\bmap handicap\b|\bgame handicap\b|\besports\b|\be-sports\b|\bmap \d\b|\bbo\d\b/.test(s)) {
+    // Try to infer from team names / context
     for (const [game, patterns] of Object.entries(ESPORTS_GAMES)) {
-      if (patterns.some(p => new RegExp(p, 'i').test(s))) return game;
+      if (patterns.length > 0 && patterns.some(p => new RegExp(p, 'i').test(s))) return game;
     }
     return 'E-Sports';
   }
@@ -1606,15 +1607,18 @@ function renderResKPIs(rows){
   const isBRL=resCurrency==='brl';
   const curLabel=isBRL?'BRL':'USD';
 
+  // Update cotação card (always visible)
+  const cotCard = document.getElementById('cotacao-card');
+  if (cotCard && dolar) { cotCard.textContent = '1 USD = R$ ' + nf(dolar,4) + ' · ' + dolarHoje.str; cotCard.classList.add('visible'); }
+
   const kpis=[
-    {label:`P/L (${curLabel})`,val:fvSigned(totalPnl),cls:totalPnl>=0?'green':'red',sub:isBRL&&dolar?`1 USD = R$ ${nf(dolar,4)}`:(dolar?`≈ ${fb(totalPnl*dolar)}`:'')},
+    {label:`P/L (${curLabel})`,val:fvSigned(totalPnl),cls:totalPnl>=0?'green':'red',sub:isBRL?'':(dolar?`≈ ${fb(totalPnl*dolar)}`:'')},
     {label:`Turnover (${curLabel})`,val:fvAbs(turnover),cls:'blue',sub:rows.length+' apostas'},
     {label:'ROI',val:(roi>=0?'+':'')+roi.toFixed(2)+'%',cls:roi>=0?'green':'red',sub:enc.length+' encerradas'},
     {label:'Win Rate',val:wr.toFixed(1)+'%',cls:wr>=50?'green':wr>0?'amber':'red',sub:`W:${W} L:${L}`},
     {label:'Odd Média Pond.',val:nf(oddAvg,4),cls:'amber',sub:'Σ(odd×stake)/Σ(stake)'},
     {label:`Stake Média (${curLabel})`,val:fvAbs(stakeAvg),cls:'',sub:'por aposta'},
     {label:'Tipsters Ativos',val:tipAtivos.toString(),cls:'blue',sub:tipAtivos>0?[...new Set(rows.map(r=>r.tipster).filter(Boolean))].slice(0,3).join(', ')+(tipAtivos>3?'...':''):'Nenhum'},
-    {label:'USD/BRL',val:dolar?'R$ '+nf(dolar,4):'—',cls:'',sub:dolarHoje?.str||'sem cotação'},
   ];
   el.innerHTML=kpis.map(k=>`<div class="kpi"><div class="kpi-label">${k.label}</div><div class="kpi-val ${k.cls}">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
 }
@@ -1729,7 +1733,7 @@ function renderCalendar(){
     const key=`${yr}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const data=dayMap[key];const isToday=key===today;
     if(!data){html+=`<div class="cal-day${isToday?' today-day':''}" style="background:var(--bg4);opacity:.4;border:1px solid ${isToday?'var(--blue)':'transparent'}"><div class="cal-day-num" style="color:var(--text3)">${d}</div></div>`;}
-    else{const bg=dayBg(data.pl);const txtColor=Math.abs(data.pl)/maxAbs>0.5?'#fff':(data.pl>=0?'var(--green)':'var(--red)');html+=`<div class="cal-day has-data" style="background:${bg};border-color:${isToday?'var(--blue)':bg}"><div class="cal-day-num" style="color:${txtColor}">${d}</div><div class="cal-day-pl" style="color:${txtColor};font-size:11px">${(data.pl>=0?'+':'')+Math.round(data.pl).toLocaleString('pt-BR')}</div><div class="cal-day-bets" style="color:${txtColor}">${data.n}b</div></div>`;}
+    else{const bg=dayBg(data.pl);const txtColor=Math.abs(data.pl)/maxAbs>0.5?'#fff':(data.pl>=0?'var(--green)':'var(--red)');html+=`<div class="cal-day has-data" style="background:${bg};border-color:${isToday?'var(--blue)':bg}"><div class="cal-day-num" style="color:${txtColor}">${d}</div><div class="cal-day-pl" style="color:${txtColor};font-size:11px">${(()=>{const cv=data.pl*_calRate;return(cv>=0?'+':'')+Math.round(Math.abs(cv)).toLocaleString(_calBRL?'pt-BR':'en-US');})()}</div><div class="cal-day-bets" style="color:${txtColor}">${data.n}b</div></div>`;}
   }
   html+=`</div>`;cont.innerHTML=html;
 }
@@ -1937,13 +1941,13 @@ async function limparERegerar(){if(!confirm('Isso vai limpar o histórico e rege
 
 // ─── WALLET BALANCE ───
 const POLYGON_RPC = 'https://polygon-rpc.com';
-// USDC.e (old collateral) and pUSD (new collateral since Apr 2026)
+// pUSD = new Polymarket collateral (April 2026 upgrade), USDC.e = old
+// These are the proxy wallet balances
 const USDC_E = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
-// pUSD contract (Polymarket native pUSD)
-const PUSD = '0xc4b02c1e59eF8c47a4e66F78BFCDd3e4Bdfe0ac2';
+// pUSD: verify via Polymarket docs — 1:1 USDC-backed ERC-20 on Polygon
+const PUSD   = '0x4fA30Cd1F85d0b8EC7F8edCa7F5e04a8d3d3A2e6';
 
 async function erc20BalanceOf(tokenAddr, walletAddr) {
-  // ERC20 balanceOf(address) = 0x70a08231
   const data = '0x70a08231' + walletAddr.replace('0x','').toLowerCase().padStart(64,'0');
   try {
     const resp = await fetch(POLYGON_RPC, {
@@ -1952,28 +1956,46 @@ async function erc20BalanceOf(tokenAddr, walletAddr) {
       body: JSON.stringify({jsonrpc:'2.0',method:'eth_call',params:[{to:tokenAddr,data},'latest'],id:1})
     });
     const j = await resp.json();
-    if (j.result && j.result !== '0x') {
-      return parseInt(j.result, 16) / 1e6; // USDC has 6 decimals
+    if (j.result && j.result !== '0x' && j.result !== '0x0') {
+      return parseInt(j.result, 16) / 1e6;
     }
   } catch(e) {}
   return 0;
 }
 
 async function fetchWalletBalances(walletAddr) {
-  // Check pUSD first (current), fallback to USDC.e
+  // Strategy 1: gamma-api profile (returns available USDC balance directly)
+  try {
+    const r = await fetch('https://gamma-api.polymarket.com/profiles?id=' + walletAddr);
+    if (r.ok) {
+      const data = await r.json();
+      const profile = Array.isArray(data) ? data[0] : data;
+      if (profile) {
+        // gamma profile has cashBalance or availableBalance field
+        const avail = parseFloat(profile.cashBalance ?? profile.availableBalance ?? profile.balance ?? -1);
+        if (avail >= 0) {
+          return { pusd: avail, usdce: 0, available: avail, source: 'gamma' };
+        }
+      }
+    }
+  } catch(e) {}
+
+  // Strategy 2: Polygon RPC — check both pUSD and USDC.e
   try {
     const [pusd, usdce] = await Promise.all([
       erc20BalanceOf(PUSD, walletAddr),
       erc20BalanceOf(USDC_E, walletAddr)
     ]);
-    return { pusd, usdce, available: pusd + usdce };
-  } catch(e) {
-    return { pusd: 0, usdce: 0, available: 0 };
-  }
+    if (pusd > 0 || usdce > 0) {
+      return { pusd, usdce, available: pusd + usdce, source: 'rpc' };
+    }
+  } catch(e) {}
+
+  return { pusd: 0, usdce: 0, available: 0, source: 'none' };
 }
 
 async function fetchPortfolioValue(walletAddr) {
-  // data-api.polymarket.com/value returns total value of open positions
+  // data-api.polymarket.com/value = current market value of open positions
   try {
     const r = await fetch('https://data-api.polymarket.com/value?user=' + walletAddr);
     if (!r.ok) return null;
@@ -2017,9 +2039,11 @@ async function renderWalletCards(walletAddr) {
   const bEl = document.getElementById('k-balance');
   if (bEl) { bEl.textContent = dv(available); bEl.className = 'kpi-val' + (available > 0 ? ' green' : ''); }
   const bBrl = document.getElementById('k-balance-brl');
-  const pusdStr = balances.pusd > 0 ? 'pUSD ' + balances.pusd.toFixed(2) : '';
-  const usdceStr = balances.usdce > 0 ? 'USDC.e ' + balances.usdce.toFixed(2) : '';
-  if (bBrl) bBrl.textContent = [pusdStr, usdceStr].filter(Boolean).join(' · ') || (isBRL ? '' : (dolar ? '≈ ' + fb(available * dolar) : ''));
+  let bSubText = '';
+  if (balances.source === 'gamma') bSubText = 'via Polymarket';
+  else if (balances.source === 'rpc') { const parts=[]; if(balances.pusd>0)parts.push('pUSD '+balances.pusd.toFixed(2)); if(balances.usdce>0)parts.push('USDC.e '+balances.usdce.toFixed(2)); bSubText=parts.join(' · ');}
+  if (!bSubText && !isBRL && dolar) bSubText = '≈ ' + fb(available * dolar);
+  if (bBrl) bBrl.textContent = bSubText;
 
   // Total wallet card
   const tEl = document.getElementById('k-total-wallet');
