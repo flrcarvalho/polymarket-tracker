@@ -317,7 +317,7 @@ table.poly-tbl td input.col-res{font-weight:700}
           <div class="kpi-sub" id="k-portfolio-brl"></div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">Saldo disponível (USDC)</div>
+          <div class="kpi-label">Cash disponível (pUSD)</div>
           <div class="kpi-val" id="k-balance">—</div>
           <div class="kpi-sub" id="k-balance-brl"></div>
         </div>
@@ -1945,51 +1945,60 @@ function limparHistorico(){if(!confirm('Limpar todo o histórico local?'))return
 async function limparERegerar(){if(!confirm('Isso vai limpar o histórico e regenerar. Continuar?'))return;localStorage.removeItem(HIST_KEY);await gerarCSV();renderHistorico();}
 
 // ─── WALLET BALANCE ───
-const POLYGON_RPC = 'https://polygon-rpc.com';
-// Collateral tokens on Polygon
-const USDC_NATIVE = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359'; // native USDC (Circle)
-const USDC_E      = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'; // USDC.e (bridged)
-const PUSD        = '0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB'; // pUSD verified on PolygonScan // pUSD (Polymarket Apr 2026)
+// Polygon RPC endpoints (try multiple for CORS fallback)
+const POLYGON_RPCS = [
+  'https://polygon-rpc.com',
+  'https://rpc-mainnet.matic.quiknode.pro',
+  'https://matic-mainnet.chainstacklabs.com',
+];
+// pUSD = Polymarket collateral (verified on PolygonScan: 0xC011...)
+const PUSD   = '0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB';
+const USDC_E = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
 
 async function erc20BalanceOf(tokenAddr, walletAddr) {
   const callData = '0x70a08231' + walletAddr.replace('0x','').toLowerCase().padStart(64,'0');
-  try {
-    const resp = await fetch(POLYGON_RPC, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({jsonrpc:'2.0',method:'eth_call',params:[{to:tokenAddr,data:callData},'latest'],id:1})
-    });
-    const j = await resp.json();
-    if (j.result && j.result.length > 2 && j.result !== '0x0') {
-      const val = parseInt(j.result, 16);
-      return val > 0 ? val / 1e6 : 0;
-    }
-  } catch(e) {}
+  for (const rpc of POLYGON_RPCS) {
+    try {
+      const resp = await fetch(rpc, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({jsonrpc:'2.0',method:'eth_call',params:[{to:tokenAddr,data:callData},'latest'],id:1})
+      });
+      const j = await resp.json();
+      if (j.result && j.result.length > 2 && j.result !== '0x0') {
+        const val = parseInt(j.result, 16);
+        if (val > 0) return val / 1e6;
+      }
+      return 0; // valid response, balance is zero — stop here
+    } catch(e) { /* CORS or network error, try next RPC */ }
+  }
   return 0;
 }
 
 async function fetchWalletBalances(walletAddr) {
-  // Try all 3 stablecoin contracts in parallel
+  // pUSD = "Available to trade" cash shown on Polymarket
+  // USDC.e = old collateral (users may still have some)
+  // The walletAddr IS the Polymarket proxy wallet (the address shown on polymarket.com)
   try {
-    const [pusd, usdcNative, usdce] = await Promise.all([
+    const [pusd, usdce] = await Promise.all([
       erc20BalanceOf(PUSD, walletAddr),
-      erc20BalanceOf(USDC_NATIVE, walletAddr),
       erc20BalanceOf(USDC_E, walletAddr)
     ]);
-    const available = pusd + usdcNative + usdce;
+    const available = pusd + usdce;
+    console.log('[Wallet]', {pusd, usdce, available, addr: walletAddr.slice(0,10)+'...'});
     const parts = [];
-    if (pusd > 0)       parts.push({label:'pUSD', val:pusd});
-    if (usdcNative > 0) parts.push({label:'USDC', val:usdcNative});
-    if (usdce > 0)      parts.push({label:'USDC.e', val:usdce});
-    console.log('[Wallet RPC]', {pusd, usdcNative, usdce, available, addr:walletAddr.slice(0,10)});
-    return { available, parts, source: available > 0 ? 'rpc' : 'none' };
+    if (pusd > 0)  parts.push({label:'pUSD', val:pusd});
+    if (usdce > 0) parts.push({label:'USDC.e', val:usdce});
+    return { available, parts, source: 'rpc' };
   } catch(e) {
+    console.warn('[Wallet] failed:', e);
     return { available: 0, parts: [], source: 'none' };
   }
 }
 
 async function fetchPortfolioValue(walletAddr) {
-  // data-api.polymarket.com/value = current market value of open positions
+  // data-api/value = total current value of ALL open positions
+  // = "Portfolio" shown on polymarket.com
   try {
     const r = await fetch('https://data-api.polymarket.com/value?user=' + walletAddr);
     if (!r.ok) return null;
@@ -1999,6 +2008,7 @@ async function fetchPortfolioValue(walletAddr) {
   } catch(e) {}
   return null;
 }
+
 async function renderWalletCards(walletAddr) {
   const dolar = dolarHoje?.val || null;
   const isBRL = dashCurrency === 'brl';
@@ -2037,8 +2047,8 @@ async function renderWalletCards(walletAddr) {
     bSubText = balances.parts.map(p=>p.label+' '+p.val.toFixed(2)).join(' · ');
   } else if (!isBRL && dolar && available > 0) {
     bSubText = '≈ ' + fb(available * dolar);
-  } else if (available === 0) {
-    bSubText = 'não detectado via RPC';
+  } else {
+    bSubText = 'verificando on-chain...';
   }
   if (bBrl) bBrl.textContent = bSubText;
 
