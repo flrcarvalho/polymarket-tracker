@@ -1724,7 +1724,7 @@ function renderCalendar(){
   const monthPl=Object.values(dayMap).reduce((s,v)=>s+v.pl,0);
   const monthBets=Object.values(dayMap).reduce((s,v)=>s+v.n,0);
   const plEl=document.getElementById('cal-month-pl');const betsEl=document.getElementById('cal-month-bets');
-  if(plEl){plEl.textContent=_fmt(monthPl);plEl.style.color=monthPl>=0?'var(--green)":'var(--red)';}
+  if(plEl){plEl.textContent=_fmt(monthPl);plEl.style.color=monthPl>=0?'var(--green)':'var(--red)';}
   if(betsEl)betsEl.textContent=monthBets+' apostas';
   const today=new Date().toISOString().slice(0,10);
   const allPls=Object.values(dayMap).map(v=>Math.abs(v.pl));
@@ -1737,8 +1737,8 @@ function renderCalendar(){
   for(let d=1;d<=daysInMonth;d++){
     const key=`${yr}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const data=dayMap[key];const isToday=key===today;
-    if(!data){html+=`<div class="cal-day${isToday?' today-day':''}" style="background:var(--bg4);opacity:.4;border:1px solid ${isToday?'var(--blue)":'transparent'}"><div class="cal-day-num" style="color:var(--text3)">${d}</div></div>`;}
-    else{const bg=dayBg(data.pl);const txtColor=Math.abs(data.pl)/maxAbs>0.5?'#fff':(data.pl>=0?'var(--green)":'var(--red)');html+=`<div class="cal-day has-data" style="background:${bg};border-color:${isToday?'var(--blue)":bg}"><div class="cal-day-num" style="color:${txtColor}">${d}</div><div class="cal-day-pl" style="color:${txtColor};font-size:11px">${_fmtDay(data.pl)}</div><div class="cal-day-bets" style="color:${txtColor}">${data.n}b</div></div>`;}
+    if(!data){html+=`<div class="cal-day${isToday?' today-day':''}" style="background:var(--bg4);opacity:.4;border:1px solid ${isToday?'var(--blue)':'transparent'}"><div class="cal-day-num" style="color:var(--text3)">${d}</div></div>`;}
+    else{const bg=dayBg(data.pl);const txtColor=Math.abs(data.pl)/maxAbs>0.5?'#fff':(data.pl>=0?'var(--green)':'var(--red)');html+=`<div class="cal-day has-data" style="background:${bg};border-color:${isToday?'var(--blue)':bg}"><div class="cal-day-num" style="color:${txtColor}">${d}</div><div class="cal-day-pl" style="color:${txtColor};font-size:11px">${_fmtDay(data.pl)}</div><div class="cal-day-bets" style="color:${txtColor}">${data.n}b</div></div>`;}
   }
   html+=`</div>`;cont.innerHTML=html;
 }
