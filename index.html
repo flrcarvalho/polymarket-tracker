@@ -1351,6 +1351,8 @@ async function buscar(){
     let[todasPos,activity]=await Promise.all([rA.json(),rAct.ok?rAct.json():[]]);
     todasPos=Array.isArray(todasPos)?todasPos:[];
     window._polyActivity=Array.isArray(activity)?activity:[];
+    window._dadosAtivos=dadosAtivos;
+    window._dadosFechados=dadosFechados;
     dadosFechados=todasPos.filter(p=>p.redeemable===true&&parseFloat(p.currentValue||0)===0);
     dadosAtivos=todasPos.filter(p=>!(p.redeemable===true&&parseFloat(p.currentValue||0)===0));
     const activeCids=new Set(todasPos.map(p=>p.conditionId).filter(Boolean));
@@ -1953,59 +1955,80 @@ async function limparERegerar(){if(!confirm('Isso vai limpar o histórico e rege
 //   cashBalance    = "Available to trade" ($787.23)
 // Fallback: compute from activity records already fetched
 
-async function fetchWalletData(walletAddr) {
-  // Strategy 1: gamma-api profile (most reliable, matches Polymarket UI)
-  try {
-    const r = await fetch('https://gamma-api.polymarket.com/profiles?id=' + walletAddr, {
-      headers: {'Accept':'application/json'}
-    });
-    if (r.ok) {
-      const data = await r.json();
-      const p = Array.isArray(data) ? data[0] : data;
-      if (p) {
-        // Dump ALL profile fields to console so we can find the right one
-        console.log('[Gamma Profile FULL]', JSON.stringify(p));
-        // Try all possible field names
-        const cash = parseFloat(
-          p.cashBalance ?? p.availableBalance ?? p.cash ?? p.collateral ??
-          p.usdcBalance ?? p.pUSDBalance ?? p.available ?? p.availableCash ??
-          p.tradingBalance ?? p.walletBalance ?? -1
-        );
-        const portfolio = parseFloat(
-          p.portfolioValue ?? p.totalValue ?? p.value ?? p.totalPortfolio ?? -1
-        );
-        if (cash >= 0) {
-          console.log('[Gamma Cash Found]', cash, '| portfolio:', portfolio);
-          return { cash, portfolio: portfolio >= 0 ? portfolio : null, source: 'gamma' };
-        }
-        console.warn('[Gamma Profile] no cash field found in:', Object.keys(p).join(', '));
-      }
-    }
-  } catch(e) { console.warn('[Gamma]', e.message); }
+// pUSD token on Polygon (Polymarket collateral, verified on PolygonScan)
+const PUSD   = '0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB';
+const USDC_E = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
+const POLYGON_RPCS = [
+  'https://polygon-rpc.com',
+  'https://rpc-mainnet.matic.quiknode.pro',
+  'https://matic-mainnet.chainstacklabs.com',
+];
 
-  // Strategy 2: compute cash from activity (already loaded in memory)
-  // activity records have: type, side, usdcSize
-  // Cash = sum(SELLs + REDEEMs + MERGEs + REWARDs) - sum(BUYs + SPLITs)
+async function rpcBalanceOf(tokenAddr, walletAddr) {
+  const data = '0x70a08231' + walletAddr.replace('0x','').toLowerCase().padStart(64,'0');
+  for (const rpc of POLYGON_RPCS) {
+    try {
+      const r = await fetch(rpc, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({jsonrpc:'2.0',method:'eth_call',
+          params:[{to:tokenAddr, data}, 'latest'], id:1})
+      });
+      const j = await r.json();
+      if (j.result && j.result.length > 2) {
+        return parseInt(j.result, 16) / 1e6;
+      }
+    } catch(e) { /* try next */ }
+  }
+  return 0;
+}
+
+async function fetchWalletData(walletAddr) {
+  // KEY INSIGHT: Polymarket users have a PROXY WALLET that holds their funds.
+  // The address entered by the user may be their EOA (MetaMask).
+  // The proxyWallet address is returned in activity and positions records.
+  // We must query pUSD balance of the PROXY WALLET, not the EOA.
+
+  // Get proxy wallet from already-loaded data
+  let proxyWallet = walletAddr; // default: assume user entered proxy wallet
   try {
-    if (window._polyActivity && window._polyActivity.length > 0) {
+    // Activity records have proxyWallet field
+    if (window._polyActivity?.length > 0 && window._polyActivity[0].proxyWallet) {
+      proxyWallet = window._polyActivity[0].proxyWallet;
+    }
+    // Positions also have proxyWallet
+    if (window._dadosAtivos?.length > 0 && window._dadosAtivos[0].proxyWallet) {
+      proxyWallet = window._dadosAtivos[0].proxyWallet;
+    }
+    if (window._dadosFechados?.length > 0 && window._dadosFechados[0].proxyWallet) {
+      proxyWallet = window._dadosFechados[0].proxyWallet;
+    }
+  } catch(e) {}
+
+  console.log('[Wallet] EOA/input:', walletAddr.slice(0,12), '| proxyWallet:', proxyWallet.slice(0,12));
+
+  // Read pUSD + USDC.e balance from proxy wallet via Polygon RPC
+  try {
+    const [pusd, usdce] = await Promise.all([
+      rpcBalanceOf(PUSD, proxyWallet),
+      rpcBalanceOf(USDC_E, proxyWallet)
+    ]);
+    const cash = pusd + usdce;
+    console.log('[Wallet RPC] pUSD='+pusd.toFixed(2)+' USDC.e='+usdce.toFixed(2)+' proxy='+proxyWallet.slice(0,12));
+    if (cash > 0) return { cash, portfolio: null, source: 'rpc', proxyWallet };
+  } catch(e) { console.warn('[Wallet RPC error]', e.message); }
+
+  // Fallback: activity-based (partial, missing deposits)
+  try {
+    if (window._polyActivity?.length > 0) {
       let cash = 0;
       for (const a of window._polyActivity) {
-        const amt = parseFloat(a.usdcSize || a.cashAmount || 0);
-        if (a.type === 'TRADE') {
-          if (a.side === 'BUY')  cash -= amt;
-          if (a.side === 'SELL') cash += amt;
-        } else if (a.type === 'REDEEM' || a.type === 'MERGE' || a.type === 'REWARD') {
-          cash += amt;
-        } else if (a.type === 'SPLIT') {
-          cash -= amt;
-        }
+        const amt = parseFloat(a.usdcSize || 0);
+        if (a.type === 'TRADE') { if (a.side==='BUY') cash-=amt; else cash+=amt; }
+        else if (a.type==='REDEEM'||a.type==='MERGE'||a.type==='REWARD') cash+=amt;
+        else if (a.type==='SPLIT') cash-=amt;
       }
-      // Log all unique activity types seen
-      const types = {};
-      window._polyActivity.forEach(a => { types[a.type+':'+(a.side||'')] = (types[a.type+':'+(a.side||'')]||0)+1; });
-      console.log('[Activity Types]', JSON.stringify(types));
-      console.log('[Activity Cash]', cash.toFixed(2), 'from', window._polyActivity.length, 'records (MISSING deposits/withdrawals)');
-      if (cash > 0) return { cash, portfolio: null, source: 'activity' };
+      console.log('[Wallet Activity fallback] cash='+cash.toFixed(2)+' (incomplete, no deposits)');
+      if (cash > 0) return { cash, portfolio: null, source: 'activity-partial' };
     }
   } catch(e) {}
 
