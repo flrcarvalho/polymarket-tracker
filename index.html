@@ -604,19 +604,18 @@ const DARTS_TOURS = ['pdc','bdo','wdf','premier league darts','world championshi
 const TENNIS_TOURS = ['atp','wta','grand slam','australian open','roland garros','wimbledon','us open','french open','oeiras','madrid open','rome','monte carlo','miami open','indian wells','barcelona open','estoril','brd nastase','bucharest'];
 // E-sports games
 const ESPORTS_GAMES = {
-  'Valorant': ['valorant','vct','sentinels','loud.*valo','furia.*valo','leviatan','leviatán','loud esports','loud.*val','nrg.*val','100t.*val','evil geniuses.*val','cloud9.*val','team liquid.*val','mibr.*val','fnatic.*val','paper rex','drx.*val','prx','gen.g.*val','zeta.*val','bilibili.*val','team vitality.*val','guild.*val','bbl.*val','fut.*val','navi.*val','kru esports','kru ','eg.*val','c9.*val'],
-  'CS2': ['counter-strike','cs2','csgo','pgl.*cs','iem.*cs','nodwin','blast.*cs','esl.*cs','sinners','gamelegion','natus vincere','navi.*cs','faze.*cs','vitality.*cs','mouz','b8 team','betboom team','heroic','astralis','spirit.*cs','bb team','faze clan','team spirit','apeks','complexity','9z team','outsiders','entropiq','big.*cs','big clan','fnatic.*cs','virtus.pro'],
-  'League of Legends': ['league of legends','\\blol\\b','lec','lck','lpl','lcs','vcs','pcs','cblol','hanwha','kt rolster','movistar koi','g2 esports','nongshim','karmine','giantx','t1 ','bnk fearx','dplus','dplus kia','gen.g','cloud9.*lol','100 thieves.*lol','team liquid.*lol','fnatic.*lol','mad lions','weibo gaming','jdg','bilibili gaming','blg','top esports','tes','edward gaming','edg','rng.*lol','lng','nip.*lol','flyquest','dignitas.*lol','aurora.*lol','sk gaming','vitality.*lol','fnc.*lol'],
-  'Dota 2': ['dota\\b','ti\\d','the international.*dota','liquid.*dota','og.*dota','team secret','psg.lgd','lgd','team aster','virtus.pro.*dota','tundra esports','gaimin gladiators','9pandas','beastcoast'],
-  'Rocket League': ['rocket league','rlcs','team bds','nrg.*rl','faze.*rl','g2.*rl','complexity.*rl','twist.*rl'],
-  'Call of Duty': ['call of duty','\\bcod\\b','cdl','paris gentle mates','miami heretics','los angeles thieves','toronto ultra','new york subliners','optic texas','los angeles guerrillas','minnesota rokkr','seattle surge','atlanta faze','boston breach','london royal ravens','florida mutineers'],
-  'Overwatch': ['overwatch','\\bowl\\b','overwatch league'],
-  'Rainbow Six': ['rainbow six','\\br6\\b','siege'],
-  'Fortnite': ['fortnite','fncs'],
-  'Apex Legends': ['apex legends','algs'],
-  'PUBG': ['\\bpubg\\b','pubg mobile'],
-  'StarCraft': ['starcraft','\\bsc2\\b','\\bbroodwar\\b'],
-  'VALORANT': [],
+  'Valorant': ['valorant','\\bvct\\b','sentinels.*val','loud.*val','furia.*val','nrg.*val','100t.*val','evil geniuses.*val','cloud9.*val','team liquid.*val','mibr.*val','fnatic.*val','paper rex','drx.*val','\\bprx\\b.*val','gen\\.g.*val','zeta.*val','bilibili.*val','vitality.*val','guild.*val','navi.*val','kru esports','\\bkru\\b.*val'],
+  'CS2': ['counter-strike','\\bcs2\\b','\\bcsgo\\b','pgl.*cs','iem.*cs','blast.*cs','esl.*cs','natus vincere','faze.*cs','vitality.*cs','\\bmouz\\b','betboom team','\\bheroic\\b','\\bastralis\\b','spirit.*cs','faze clan','team spirit.*cs','\\bapeks\\b','entropiq','virtus\\.pro.*cs'],
+  'League of Legends': ['league of legends','\\blol\\b','\\blec\\b','\\blck\\b','\\blpl\\b','\\blcs\\b','\\bvcs\\b','\\bpcs\\b','\\bcblol\\b','hanwha life','kt rolster','movistar koi','g2 esports.*lol','nongshim','karmine corp','giantx','\\bt1\\b','bnk fearx','dplus kia','gen\\.g.*lol','cloud9.*lol','100 thieves.*lol','team liquid.*lol','fnatic.*lol','mad lions','weibo gaming','\\bjdg\\b','bilibili gaming','top esports','edward gaming.*lol','flyquest','dignitas.*lol','aurora.*lol','vitality.*lol'],
+  'Dota 2': ['\\bdota\\b','the international.*dota','team secret','psg\\.lgd','\\blgd\\b','tundra esports','gaimin gladiators','beastcoast'],
+  'Rocket League': ['rocket league','\\brlcs\\b'],
+  'Call of Duty': ['call of duty','\\bcod\\b','\\bcdl\\b','paris gentle mates','miami heretics','los angeles thieves','toronto ultra','new york subliners','optic texas','los angeles guerrillas','minnesota rokkr','seattle surge','atlanta faze','boston breach','london royal ravens','florida mutineers'],
+  'Overwatch': ['overwatch','overwatch league'],
+  'Rainbow Six': ['rainbow six','\\br6 siege\\b'],
+  'Fortnite': ['fortnite','\\bfncs\\b'],
+  'Apex Legends': ['apex legends','\\balgs\\b'],
+  'PUBG': ['\\bpubg\\b'],
+  'StarCraft': ['starcraft','\\bsc2\\b'],
 };
 
 function detEs(t) {
@@ -1982,6 +1981,7 @@ async function fetchWalletBalances(walletAddr) {
     if (pusd > 0)       parts.push({label:'pUSD', val:pusd});
     if (usdcNative > 0) parts.push({label:'USDC', val:usdcNative});
     if (usdce > 0)      parts.push({label:'USDC.e', val:usdce});
+    console.log('[Wallet RPC]', {pusd, usdcNative, usdce, available, addr:walletAddr.slice(0,10)});
     return { available, parts, source: available > 0 ? 'rpc' : 'none' };
   } catch(e) {
     return { available: 0, parts: [], source: 'none' };
