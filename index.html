@@ -1963,15 +1963,22 @@ async function fetchWalletData(walletAddr) {
       const data = await r.json();
       const p = Array.isArray(data) ? data[0] : data;
       if (p) {
-        // Try all possible field names the profile API might use
+        // Dump ALL profile fields to console so we can find the right one
+        console.log('[Gamma Profile FULL]', JSON.stringify(p));
+        // Try all possible field names
         const cash = parseFloat(
-          p.cashBalance ?? p.availableBalance ?? p.cash ?? p.collateral ?? p.usdcBalance ?? -1
+          p.cashBalance ?? p.availableBalance ?? p.cash ?? p.collateral ??
+          p.usdcBalance ?? p.pUSDBalance ?? p.available ?? p.availableCash ??
+          p.tradingBalance ?? p.walletBalance ?? -1
         );
         const portfolio = parseFloat(
-          p.portfolioValue ?? p.totalValue ?? p.value ?? -1
+          p.portfolioValue ?? p.totalValue ?? p.value ?? p.totalPortfolio ?? -1
         );
-        console.log('[Gamma Profile]', JSON.stringify(p).slice(0, 300));
-        if (cash >= 0) return { cash, portfolio: portfolio >= 0 ? portfolio : null, source: 'gamma' };
+        if (cash >= 0) {
+          console.log('[Gamma Cash Found]', cash, '| portfolio:', portfolio);
+          return { cash, portfolio: portfolio >= 0 ? portfolio : null, source: 'gamma' };
+        }
+        console.warn('[Gamma Profile] no cash field found in:', Object.keys(p).join(', '));
       }
     }
   } catch(e) { console.warn('[Gamma]', e.message); }
@@ -1993,7 +2000,11 @@ async function fetchWalletData(walletAddr) {
           cash -= amt;
         }
       }
-      console.log('[Activity Cash]', cash.toFixed(2), 'from', window._polyActivity.length, 'records');
+      // Log all unique activity types seen
+      const types = {};
+      window._polyActivity.forEach(a => { types[a.type+':'+(a.side||'')] = (types[a.type+':'+(a.side||'')]||0)+1; });
+      console.log('[Activity Types]', JSON.stringify(types));
+      console.log('[Activity Cash]', cash.toFixed(2), 'from', window._polyActivity.length, 'records (MISSING deposits/withdrawals)');
       if (cash > 0) return { cash, portfolio: null, source: 'activity' };
     }
   } catch(e) {}
