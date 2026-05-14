@@ -1279,15 +1279,17 @@ function adjustPolyDate(dateObj){
 }
 
 function parseDateFromPos(pos,isClosed){
+  // startDate = quando o mercado abriu para apostas ~ data do jogo (MELHOR campo)
+  // endDate = data de expiração do MERCADO (pode ser fim do torneio = errado)
   let ts;
-  if(isClosed){ts=pos.endDate||pos.startDate||pos.createdAt;}
+  if(isClosed){ts=pos.startDate||pos.createdAt||pos.endDate;}
   else{ts=pos.startDate||pos.createdAt;}
   if(!ts)return null;
   let d;
   if(typeof ts==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(ts)){const[y,m,day]=ts.split('-').map(Number);return new Date(y,m-1,day,12);}
   else if(typeof ts==='string'){d=new Date(ts);}
   else{d=new Date(parseInt(ts)*(String(ts).length<=10?1000:1));}
-  if(isClosed&&pos.endDate&&!pos.startDate?.includes('T')){d=adjustPolyDate(d)||d;}
+  if(d){d=adjustPolyDate(d)||d;}
   return d;
 }
 function fmtDate(pos,isClosed=false){const d=parseDateFromPos(pos,isClosed);return d?fmtObj(d):'';}
