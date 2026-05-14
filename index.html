@@ -1278,9 +1278,48 @@ function adjustPolyDate(dateObj){
   return dateObj;
 }
 
+// Cache de timestamps REDEEM por conditionId — preenchido após sync
+window._redeemTsCache = window._redeemTsCache || {};
+
+function buildRedeemCache(activity){
+  // Mapeia conditionId → timestamp mais recente de REDEEM
+  // Esse timestamp é a data real de resolução do mercado (jogo terminou)
+  const cache={};
+  if(!Array.isArray(activity))return cache;
+  activity.forEach(a=>{
+    if(a.type!=='REDEEM'&&a.side!=='REDEEM')return;
+    const cid=a.conditionId;if(!cid)return;
+    const ts=parseInt(a.timestamp||0);
+    if(ts>0&&(!cache[cid]||ts>cache[cid]))cache[cid]=ts;
+  });
+  return cache;
+}
+
 function parseDateFromPos(pos,isClosed){
-  // startDate = quando o mercado abriu para apostas ~ data do jogo (MELHOR campo)
-  // endDate = data de expiração do MERCADO (pode ser fim do torneio = errado)
+  // PRIORIDADE para posições fechadas:
+  // 1. _redeemTs injetado no objeto (timestamp real de resolução da activity)
+  // 2. eventSlug sufixo YYYY-MM-DD (data do jogo conforme criação do mercado)
+  // 3. startDate / createdAt / endDate (fallbacks)
+  if(isClosed){
+    // 1. REDEEM timestamp da activity (fonte mais confiável: quando o mercado resolveu)
+    const redeemTs=pos._redeemTs||(window._redeemTsCache&&window._redeemTsCache[pos.conditionId]);
+    if(redeemTs){
+      const d=new Date(redeemTs*1000);
+      // Ajuste: se resolveu entre 00h-06h UTC, provavelmente é o jogo do dia anterior
+      const h=d.getUTCHours();
+      if(h>=0&&h<6)d.setUTCDate(d.getUTCDate()-1);
+      return new Date(d.getFullYear(),d.getMonth(),d.getDate(),12);
+    }
+    // 2. eventSlug — data do jogo embutida no slug (ex: atp-xxx-2026-05-13)
+    const slug=pos.eventSlug||pos.slug||'';
+    const slugMatches=slug.match(/(\d{4}-\d{2}-\d{2})/g);
+    if(slugMatches&&slugMatches.length){
+      const last=slugMatches[slugMatches.length-1];
+      const[y,m,day]=last.split('-').map(Number);
+      if(y>2000&&m>=1&&m<=12&&day>=1&&day<=31)return new Date(y,m-1,day,12);
+    }
+  }
+  // 3. Fallback: startDate > createdAt > endDate
   let ts;
   if(isClosed){ts=pos.startDate||pos.createdAt||pos.endDate;}
   else{ts=pos.startDate||pos.createdAt;}
@@ -1289,7 +1328,6 @@ function parseDateFromPos(pos,isClosed){
   if(typeof ts==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(ts)){const[y,m,day]=ts.split('-').map(Number);return new Date(y,m-1,day,12);}
   else if(typeof ts==='string'){d=new Date(ts);}
   else{d=new Date(parseInt(ts)*(String(ts).length<=10?1000:1));}
-  if(d){d=adjustPolyDate(d)||d;}
   return d;
 }
 function fmtDate(pos,isClosed=false){const d=parseDateFromPos(pos,isClosed);return d?fmtObj(d):'';}
@@ -1348,11 +1386,29 @@ async function buscar(){
   setStatus('buscando...','loading');
   try{
     const B='https://data-api.polymarket.com';
+    // Buscar posições e primeira página de activity em paralelo
     const[rA,rAct]=await Promise.all([fetch(`${B}/positions?user=${w}&sizeThreshold=.1&limit=100`),fetch(`${B}/activity?user=${w}&limit=500`)]);
     if(!rA.ok)throw new Error('HTTP '+rA.status);
-    let[todasPos,activity]=await Promise.all([rA.json(),rAct.ok?rAct.json():[]]);
+    let[todasPos,act1]=await Promise.all([rA.json(),rAct.ok?rAct.json():[]]);
     todasPos=Array.isArray(todasPos)?todasPos:[];
-    window._polyActivity=Array.isArray(activity)?activity:[];
+    // Paginar activity até cobrir todos os REDEEMs (máx 5 páginas = 2500 registros)
+    let activity=Array.isArray(act1)?[...act1]:[];
+    if(activity.length===500){
+      setStatus('buscando histórico...','loading');
+      for(let off=500;off<=2000;off+=500){
+        try{
+          const rPage=await fetch(`${B}/activity?user=${w}&limit=500&offset=${off}`);
+          if(!rPage.ok)break;
+          const page=await rPage.json();
+          if(!Array.isArray(page)||!page.length)break;
+          activity=[...activity,...page];
+          if(page.length<500)break;
+        }catch(e){break;}
+      }
+    }
+    window._polyActivity=activity;
+    // Construir cache de REDEEMs por conditionId para datação correta das posições
+    window._redeemTsCache=buildRedeemCache(activity);
     window._dadosAtivos=dadosAtivos;
     window._dadosFechados=dadosFechados;
     dadosFechados=todasPos.filter(p=>p.redeemable===true&&parseFloat(p.currentValue||0)===0);
