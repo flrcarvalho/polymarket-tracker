@@ -529,9 +529,9 @@ table.poly-tbl td input:focus,table.poly-tbl td select:focus{background:rgba(0,2
 //  CONSTANTS & STORAGE KEYS
 // ═══════════════════════════════════════════════════
 const WALLET_KEY   = 'poly_wallet_v5';
-const COPIED_KEY   = 'poly_copied_v6';   // Set of conditionIds that are copied
-const ASSIGN_KEY   = 'poly_assign_v6';   // {conditionId: tipsterName}
-const TIPSTERS_KEY = 'poly_tipsters_v1';
+const COPIED_KEY   = 'flrc_copied_rows_v1';   // Set of conditionIds that are copied
+const ASSIGN_KEY   = 'flrc_tipster_assign_v1';   // {conditionId: tipsterName}
+const TIPSTERS_KEY = 'flrc_tipsters_v1';
 const BCB_KEY      = 'poly_bcb_v3';
 
 // Helper: build tipster select options without nested template literals
@@ -907,6 +907,50 @@ function buildRedeemCache(activity) {
 // ═══════════════════════════════════════════════════
 //  MAIN SYNC
 // ═══════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════
+//  RECONCILE REDEEMS — recover positions fully redeemed
+//  (no longer in /positions API, only in activity feed)
+// ═══════════════════════════════════════════════════
+function reconciliarRedeems(fechados, activity, activeCids) {
+  const closedIds = new Set(fechados.map(p => p.conditionId).filter(Boolean));
+  const actMap = {};
+  activity.forEach(a => {
+    const cid = a.conditionId; if (!cid) return;
+    if (!actMap[cid]) actMap[cid] = {buys:[], redeems:[]};
+    if (a.type==='REDEEM' || a.side==='REDEEM') actMap[cid].redeems.push(a);
+    else if (a.type==='BUY' || a.side==='BUY') actMap[cid].buys.push(a);
+  });
+
+  const extras = [];
+  Object.entries(actMap).forEach(([cid, {buys, redeems}]) => {
+    // Skip if already in closed or active positions
+    if (!redeems.length || closedIds.has(cid) || activeCids.has(cid)) return;
+    const totalBought   = buys.reduce((s,b) => s + parseFloat(b.size||0)*parseFloat(b.price||0), 0);
+    const totalRedeemed = redeems.reduce((s,r) => s + parseFloat(r.size||r.amount||0), 0);
+    const totalShares   = buys.reduce((s,b) => s + parseFloat(b.size||0), 0);
+    const avgPrice      = totalShares > 0
+      ? buys.reduce((s,b) => s + parseFloat(b.price||0)*parseFloat(b.size||0), 0) / totalShares
+      : 0;
+    const cashPnl       = totalRedeemed - totalBought;
+    const meta          = redeems[0] || buys[0] || {};
+    const redeemTs      = redeems.reduce((max,r) => Math.max(max, parseInt(r.timestamp||0)), 0);
+    extras.push({
+      conditionId:  cid,
+      title:        meta.title || meta.market || '',
+      asset:        meta.asset || '',
+      avgPrice,
+      initialValue: totalBought,
+      cashPnl,
+      endDate:      redeemTs ? new Date(redeemTs*1000).toISOString() : null,
+      startDate:    buys[0]?.timestamp ? new Date(parseInt(buys[0].timestamp)*1000).toISOString() : null,
+      _redeemed:    true,
+      _redeemTs:    redeemTs || null,
+    });
+  });
+  return [...fechados, ...extras];
+}
+
 function setStatus(msg, type) {
   const e = document.getElementById('statusPill');
   e.className = 'status-pill ' + type;
@@ -948,8 +992,15 @@ async function buscar() {
     window._polyActivity = activity;
     window._redeemTsCache = buildRedeemCache(activity);
 
-    dadosFechados = allPos.filter(p => p.redeemable===true && parseFloat(p.currentValue||0)===0);
-    dadosAtivos   = allPos.filter(p => !(p.redeemable===true && parseFloat(p.currentValue||0)===0));
+    // Closed: redeemable OR currentValue essentially 0 (lost positions) AND has cashPnl data
+    // Active: has meaningful currentValue (still trading)
+    // Primary filter: redeemable+resolved = closed, otherwise active
+    dadosFechados = allPos.filter(p => p.redeemable === true && parseFloat(p.currentValue||0) < 0.01);
+    dadosAtivos   = allPos.filter(p => !(p.redeemable === true && parseFloat(p.currentValue||0) < 0.01));
+
+    // Recover positions fully redeemed (gone from /positions API, only in activity)
+    const activeCids = new Set(allPos.map(p => p.conditionId).filter(Boolean));
+    dadosFechados = reconciliarRedeems(dadosFechados, activity, activeCids);
 
     // Sort fechados by date for initial order insertion
     const sortedForOrder = [...dadosFechados].sort((a,b) => {
