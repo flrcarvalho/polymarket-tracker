@@ -533,6 +533,25 @@ const COPIED_KEY   = 'poly_copied_v6';   // Set of conditionIds that are copied
 const ASSIGN_KEY   = 'poly_assign_v6';   // {conditionId: tipsterName}
 const TIPSTERS_KEY = 'poly_tipsters_v1';
 const BCB_KEY      = 'poly_bcb_v3';
+
+// Helper: build tipster select options without nested template literals
+function buildTipsterOpts(tipsters, selected) {
+  var opts = '<option value="">— tipster —</option>';
+  for (var i = 0; i < tipsters.length; i++) {
+    var t = tipsters[i];
+    opts += '<option value="' + t + '"' + (t === selected ? ' selected' : '') + '>' + t + '</option>';
+  }
+  return opts;
+}
+function buildExtTipsterOpts(tipsters, selected) {
+  var opts = '<option value="">—</option>';
+  for (var i = 0; i < tipsters.length; i++) {
+    var t = tipsters[i];
+    opts += '<option value="' + t + '"' + (t === selected ? ' selected' : '') + '>' + t + '</option>';
+  }
+  return opts;
+}
+
 const API_KEY_ST   = 'poly_apikey_v1';
 
 // Immutable ordered list of closed positions (by conditionId, oldest first)
@@ -1069,7 +1088,7 @@ function renderAtivasTable() {
       const pct = ini>0 ? (cur-ini)/ini*100 : 0;
       const cid = p.conditionId||'';
       const sel = assign[cid]||'';
-      const opts = `<option value="">— tipster —</option>${tipsters.map(t=>`<option value="${t}"${t===sel?' selected':''}>${t}</option>`).join('')}`;
+      const opts = buildTipsterOpts(tipsters, sel);
       const tipSel = `<select onchange="assignTipster(this,'${cid}')" style="background:var(--bg4);border:1px solid var(--border2);border-radius:4px;padding:3px 6px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer">${opts}</select>`;
       return `<tr><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,60)}</td><td>${dateBadge(p.endDate)}</td><td>${tipSel}</td><td><span class="badge badge-ativa">ativa</span></td><td class="mono">${fu(ini)}</td><td class="mono ${pct>=0?'green':'red'}">${pct>=0?'+':''}${pct.toFixed(1)}%</td><td class="mono">${fu(cur)}</td></tr>`;
     }).join('')
@@ -1099,7 +1118,7 @@ function renderFechadasTable() {
       const cid = p.conditionId||'';
       const sel = assign[cid]||'';
       const sport = detEs(p.title||'');
-      const opts = `<option value="">— tipster —</option>${tipsters.map(t=>`<option value="${t}"${t===sel?' selected':''}>${t}</option>`).join('')}`;
+      const opts = buildTipsterOpts(tipsters, sel);
       const tipSel = `<select onchange="assignTipsterFec(this,'${cid}')" style="background:var(--bg4);border:1px solid var(--border2);border-radius:4px;padding:3px 6px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer;min-width:90px">${opts}</select>`;
       return `<tr><td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,55)}</td><td class="muted mono" style="font-size:10px">${sport}</td><td class="mono muted">${toBR(p,true)}</td><td>${tipSel}</td><td><span class="badge badge-${res}">${res}</span></td><td class="mono">${fu(stakeUSD(p))}</td><td class="mono ${pnl>=0?'green':'red'}">${pnl>=0?'+':''}${fu(pnl)}</td><td class="mono amber">${nf(calcOdd(p),4)}</td></tr>`;
     }).join('')
@@ -1200,7 +1219,7 @@ function renderTSV() {
     const res     = pnl > 0 ? 'W' : 'L';
     const odd     = calcOdd(pos);
     const selTip  = assign[cid]||'';
-    const tipOpts = `<option value="">—</option>${tipsters.map(t=>`<option value="${t}"${t===selTip?' selected':''}>${t}</option>`).join('')}`;
+    const tipOpts = buildTipsterOpts(tipsters, selTip);
 
     const cells = [
       `<td><input value="${date}" data-row="${ri}" data-col="0" oninput="onTSVEdit(this)"/></td>`,
@@ -1601,9 +1620,9 @@ function renderResDonut(rows) {
     data:{labels:ents.map(e=>e[0]), datasets:[{data:ents.map(e=>parseFloat(e[1].toFixed(2))), backgroundColor:COLORS.slice(0,ents.length), borderWidth:2, borderColor:isDark?'#17171d':'#fff'}]},
     options:{responsive:true, maintainAspectRatio:false, cutout:'62%',
       plugins:{legend:{display:true,position:'right',labels:{color:isDark?'#eeedf0':'#0f0f18',font:{size:11},boxWidth:10,padding:8,
-        generateLabels(chart) { const ds=chart.data.datasets[0]; return chart.data.labels.map((lbl,i)=>{const v=ds.data[i],pct=total>0?(v/total*100).toFixed(1):'0';return{text:`${lbl}  ${pct}%`,fillStyle:ds.backgroundColor[i],strokeStyle:ds.backgroundColor[i],hidden:false,index:i};}); }
-      }},
-      tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${fvSigned(ctx.raw)} (${total>0?(ctx.raw/total*100).toFixed(1):'0'}%)`}}
+        generateLabels: function(chart) { var ds=chart.data.datasets[0]; return chart.data.labels.map(function(lbl,i){var v=ds.data[i],pct=total>0?(v/total*100).toFixed(1):'0';return{text:lbl+'  '+pct+'%',fillStyle:ds.backgroundColor[i],strokeStyle:ds.backgroundColor[i],hidden:false,index:i};}); }
+      }}},
+      tooltip:{callbacks:{label:function(ctx){return ctx.label+': '+fvSigned(ctx.raw)+' ('+(total>0?(ctx.raw/total*100).toFixed(1):'0')+'%)'}}}
     }
   });
 }
@@ -1920,7 +1939,7 @@ function extRenderTable(containerId, lines) {
   const tbody=rows.map((row,ri)=>{
     const cells=EXT_COLS.map((_,ci)=>{
       const val=(row[ci]||'').trim();
-      if(ci===2){const opts=`<option value="">—</option>${tips.map(t=>`<option value="${t}"${t===val?' selected':''}>${t}</option>`).join('')}`;return`<td><select data-row="${ri}" data-col="${ci}">${opts}</select></td>`;}
+      if(ci===2){const opts=buildExtTipsterOpts(tips,val);return`<td><select data-row="${ri}" data-col="${ci}">${opts}</select></td>`;}
       return`<td><input value="${val.replace(/"/g,'&quot;')}" data-row="${ri}" data-col="${ci}"/></td>`;
     }).join('');
     return`<tr>${cells}</tr>`;
@@ -1941,7 +1960,7 @@ function extBulkFill(containerId, colIdx, inputId) {
 function extAddRow(containerId) {
   const tbody=document.getElementById('exttbody-'+containerId); if(!tbody)return;
   const ri=tbody.querySelectorAll('tr').length; const tips=getTipsters();
-  const cells=EXT_COLS.map((_,ci)=>{if(ci===2){const opts=`<option value="">—</option>${tips.map(t=>`<option value="${t}">${t}</option>`).join('')}`;return`<td><select data-row="${ri}" data-col="${ci}">${opts}</select></td>`;}return`<td><input value="" data-row="${ri}" data-col="${ci}"/></td>`;}).join('');
+  const cells=EXT_COLS.map((_,ci)=>{if(ci===2){const opts=buildExtTipsterOpts(tips,'');return`<td><select data-row="${ri}" data-col="${ci}">${opts}</select></td>`;}return`<td><input value="" data-row="${ri}" data-col="${ci}"/></td>`;}).join('');
   const tr=document.createElement('tr'); tr.innerHTML=cells; tbody.appendChild(tr);
 }
 
