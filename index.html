@@ -97,7 +97,11 @@ table.tsv-tbl th{position:sticky;top:0;z-index:2;padding:7px 10px;text-align:lef
 table.tsv-tbl td{padding:0;border-bottom:1px solid var(--border);vertical-align:middle}
 table.tsv-tbl tr.row-copied td{opacity:.38}
 table.tsv-tbl tr:hover td{background:rgba(255,255,255,.02)!important}
+table.tsv-tbl td{background:var(--bg4)}
 table.tsv-tbl td input{width:100%;background:transparent;border:none;outline:none;padding:7px 10px;color:var(--text2);font-family:'IBM Plex Mono',monospace;font-size:11px}
+table.tsv-tbl td select{width:100%;background:var(--bg4);border:none;outline:none;padding:6px 8px;color:var(--text2);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer}
+table.tsv-tbl td select:focus{background:rgba(0,214,143,.07);color:var(--text)}
+table.tsv-tbl td select.needs-tipster{border-left:2px solid var(--amber) !important}
 table.tsv-tbl td input:focus{background:rgba(0,214,143,.07);color:var(--text)}
 table.tsv-tbl td input.res-W{color:var(--green);font-weight:700}
 table.tsv-tbl td input.res-L{color:var(--red);font-weight:700}
@@ -209,8 +213,16 @@ table.poly-tbl td input:focus,table.poly-tbl td select:focus{background:rgba(0,2
 <body>
 <div class="app">
 <aside class="sidebar">
-  <div class="sidebar-logo">
-    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAXwAAADUCAYAAACf35j9AACo9klEQVR42uyddZgd1f3/X2dmrq+7ZSMbd0ViBA1OCO4tDjW0pd+2FKq/Ci1taSnQ4hIIDgGCBmKEuHt2Y5t1vzry+f1x7242hlWgMO/n2Sebu3dmzhx5n48fcOHChQsXX2EoAAKBdDS3M1y4cOHi6wGX8F24cOHiawFBdzvBhQsXLr760HVXvnfhwoULFy5cuHDh4qsDpZRrw3fhwoWLrzjVA+D3p7mE78KFCxdfF7iE78KFCxdfA4i4UTouXLhw8RWHAhSO40r4Lly4cPF1kO/x+3wu4btw4cLF1wG2Y7ud4MKFCxcuXLhw4cKFCxcuXLhw4cKFCxcuXLhw4cKFCxcuXLhw4cKFCxcuXLhw4cKFCxcuXLhw4eK/DbXfvy5cuHDh4itH9EoplNLQMFzOd/GlhcfjcUsruHDxL9G9AiU6Ig4OFppmoLnLysWXbp4qNE1zZREXLv4V6R5A03TKBk6RvNLhxMPNrF/0uHJsM/V3cbvJxZeC8EWkUwd14cLF5+J7EQxvGqVjTmb4pOOIhpuJ2U1StWSWchwbEZf0XXzxEEnOQZfwXbj4V/geMHz+EwJBA3/ARukZ+NPyUJoObu1CF18yuITvwsW/IjUpRay9/s3Nc5/DiArtHWF2rnwPy4yjlOZK9y5cuHDxVZT2DU8amu53XbYuvpTw+XxuJ7hw8e+ge6V0FHoyake5J4e6+PJB01xRxIWLf5+Ir1SK7N3gNxcuXLhw4cKFCxcuXLhw8Z+E1+t1/UsuXLhw4cKFCxcuXLhw4cKFCxcuXLhw4cKFCxcuXLhw8UXB6/XiZoi4cOHCxdcAIuJG6bhw4cLF1wFupq0LFy5cuHDhwoULFy5cuHDhwsX/HDyGm2nrwoULF19xJIv5eb1u6W4XLly4+FrAjdJx4cKFi68JbNt2Cd+FCxcuXAnfhQsXLlx8ZaDpunuIuQsXLv59SLoHk3KkKEkeBIYCJHWc+8ecBibJ74GkviZdZ8BL56XumfCfa0yEZOKVS/guXLj4fESi1AHU0knuiJMyI+yl+m7U/bHkpFB7GV4pBOnG9S7jf14I4hK+CxcuPieBiByEUjqZW0cTheH1oXQdEQVKwxMIXmdb9lY7Fn1TUw6iFEopkrcSsC0cy8TGQYkgqY3Dxb8HLuG7cOHiM8MXSCMQyrxOKWMESu/rS886VvOlEQjl4glm4k3LwmP48AUzUR4/hqEQPYjuz0J3FDgmiIVlW1hWAtsxse0odqIDJ47Gti3seASzo5loez1WpI1YR/NLsXDTNMcRNE2RiHVg27Y7GJ8o2e/9Rbnd4eLLbTJQrpT3ufpO6yaF//vNIB7dg+H1IUpDiQLdW+Hxp92FSIdmGBf5AiE8vjQMbwA0HU0ZgIaDgdIUSgkigjiCg43CwYy1Y8U7kvfDwjYTmInYE7YZf942E7MdxwrbiXByXqhkmKHjuHPjU8wGQAgE0t2ucOHCxecklS/quQpXVv3sYxUIZri95uLLO0WDuT0l4M+hYfdKBQ5umMYnd5oS0HQvxf2PFKUJ1ZuXKjsR/g8+UqUs96qLg1VXY+g2ZmqvWUEd3O6w1wOg6BzvveaIpKaiDmaqcPGp1pNh+F0bvosvmylCISL4ggUjpl7yf5T1H8k7T/1BNn/0irLMGOKIu9A/gXwL+42T0eddi64r1rz2rGz58HkFchAn67+OvaOxXwhlt/8fcI18+rt/8icuPs3MEARN193EKxdfTmiGMaKgtIzcktxK+4zDH0wfrzTNVeU/vtcAyMgrJ5iViS8zh7ScQnTdwN0mXeia7q4eF19G5VPQNB/9DjteidmOrpWIM8YCsA7Mu+vMgAcWQA3Q/mHIOkOXBUTLm0N2uYTOJbhz/vwBwA=" alt="Logo"/>
+  <div class="sidebar-logo" style="padding:.75rem 1rem">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:28px;height:28px;background:var(--green);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text);letter-spacing:-.01em;font-family:'IBM Plex Sans',sans-serif;line-height:1.1">Fernando Carvalho</div>
+        <div style="font-size:9px;color:var(--text3);font-family:'IBM Plex Mono',monospace;letter-spacing:.04em">BETTING TRACKER</div>
+      </div>
+    </div>
   </div>
   <nav class="sidebar-nav">
     <div class="nav-group">Polymarket</div>
@@ -790,16 +802,17 @@ function dateBadge(endDateStr) {
   try { ev = new Date(endDateStr); } catch(e) { return '<span class="muted mono">?</span>'; }
   if (isNaN(ev)) return '<span class="muted mono">?</span>';
 
-  // Compare dates only (no time) in local timezone
+  // Use UTC dates for comparison — Polymarket endDates are UTC calendar dates
+  // This avoids Brazil UTC-3 causing dates to appear 1 day early
   const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-  const evStr    = `${ev.getFullYear()}-${String(ev.getMonth()+1).padStart(2,'0')}-${String(ev.getDate()).padStart(2,'0')}`;
+  const todayStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,'0')}-${String(now.getUTCDate()).padStart(2,'0')}`;
+  const evStr    = `${ev.getUTCFullYear()}-${String(ev.getUTCMonth()+1).padStart(2,'0')}-${String(ev.getUTCDate()).padStart(2,'0')}`;
 
   const todayMs = new Date(todayStr).getTime();
   const evMs    = new Date(evStr).getTime();
   const diffDays = Math.round((evMs - todayMs) / 86400000);
 
-  const dateDisplay = `${String(ev.getDate()).padStart(2,'0')}/${String(ev.getMonth()+1).padStart(2,'0')}/${ev.getFullYear()}`;
+  const dateDisplay = `${String(ev.getUTCDate()).padStart(2,'0')}/${String(ev.getUTCMonth()+1).padStart(2,'0')}/${ev.getUTCFullYear()}`;
 
   let pill, pillStyle;
   if (diffDays < 0)      { pill = 'enc.';    pillStyle = 'color:var(--text3);background:var(--bg5)'; }
@@ -848,7 +861,12 @@ async function getDolarHoje() {
 // ═══════════════════════════════════════════════════
 const PUSD   = '0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB';
 const USDC_E = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
-const RPCS   = ['https://polygon-rpc.com','https://rpc-mainnet.matic.quiknode.pro'];
+const RPCS   = [
+  'https://polygon-bor-rpc.publicnode.com',
+  'https://polygon.llamarpc.com',
+  'https://rpc.ankr.com/polygon',
+  'https://polygon.drpc.org',
+];
 
 async function rpcBalance(token, wallet) {
   const data = '0x70a08231' + wallet.replace('0x','').toLowerCase().padStart(64,'0');
@@ -1140,7 +1158,7 @@ function renderAtivasTable() {
       const cid = p.conditionId||'';
       const sel = assign[cid]||'';
       const opts = buildTipsterOpts(tipsters, sel);
-      const tipSel = `<select onchange="assignTipster(this,'${cid}')" style="background:var(--bg4);border:1px solid var(--border2);border-radius:4px;padding:3px 6px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer">${opts}</select>`;
+      const tipSel = `<select onchange="assignTipster(this,'${cid}')" class="${sel?'':'needs-tipster'}" style="background:var(--bg4);border:1px solid ${sel?'var(--border2)':'var(--amber)'};border-radius:4px;padding:3px 6px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer">${opts}</select>`;
       return `<tr><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,60)}</td><td>${dateBadge(p.endDate)}</td><td>${tipSel}</td><td><span class="badge badge-ativa">ativa</span></td><td class="mono">${fu(ini)}</td><td class="mono ${pct>=0?'green':'red'}">${pct>=0?'+':''}${pct.toFixed(1)}%</td><td class="mono">${fu(cur)}</td></tr>`;
     }).join('')
   );
@@ -1170,7 +1188,7 @@ function renderFechadasTable() {
       const sel = assign[cid]||'';
       const sport = detEs(p.title||'');
       const opts = buildTipsterOpts(tipsters, sel);
-      const tipSel = `<select onchange="assignTipsterFec(this,'${cid}')" style="background:var(--bg4);border:1px solid var(--border2);border-radius:4px;padding:3px 6px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer;min-width:90px">${opts}</select>`;
+      const tipSel = `<select onchange="assignTipsterFec(this,'${cid}')" class="${sel?'':'needs-tipster'}" style="background:var(--bg4);border:1px solid ${sel?'var(--border2)':'var(--amber)'};border-radius:4px;padding:3px 6px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer;min-width:90px">${opts}</select>`;
       return `<tr><td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,55)}</td><td class="muted mono" style="font-size:10px">${sport}</td><td class="mono muted">${toBR(p,true)}</td><td>${tipSel}</td><td><span class="badge badge-${res}">${res}</span></td><td class="mono">${fu(stakeUSD(p))}</td><td class="mono ${pnl>=0?'green':'red'}">${pnl>=0?'+':''}${fu(pnl)}</td><td class="mono amber">${nf(calcOdd(p),4)}</td></tr>`;
     }).join('')
   );
@@ -1275,7 +1293,7 @@ function renderTSV() {
     const cells = [
       `<td><input value="${date}" data-row="${ri}" data-col="0" oninput="onTSVEdit(this)"/></td>`,
       `<td><input value="${sport}" data-row="${ri}" data-col="1" oninput="onTSVEdit(this)"/></td>`,
-      `<td><select data-row="${ri}" data-col="2" onchange="onTSVTipChange(this,'${cid}')">${tipOpts}</select></td>`,
+      `<td><select data-row="${ri}" data-col="2" onchange="onTSVTipChange(this,'${cid}')" style="background:var(--bg4);border:none;outline:none;padding:6px 8px;color:var(--text2);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;width:100%;${selTip?'':' border-left:2px solid var(--amber) !important'}">${tipOpts}</select></td>`,
       `<td><input value="Polymarket" data-row="${ri}" data-col="3" oninput="onTSVEdit(this)"/></td>`,
       `<td><input value="Feca [Eu]" data-row="${ri}" data-col="4" oninput="onTSVEdit(this)"/></td>`,
       `<td><input value="${aposta}" data-row="${ri}" data-col="5" oninput="onTSVEdit(this)"/></td>`,
