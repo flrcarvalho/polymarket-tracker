@@ -703,8 +703,11 @@ function detAposta(pos) {
 //  DATE PARSING — source of truth hierarchy
 // ═══════════════════════════════════════════════════
 function parseDateFromPos(pos, isClosed) {
+  const todayEOD = () => { const t = new Date(); t.setHours(23,59,59,999); return t; };
+
   if (isClosed) {
-    // 1. REDEEM timestamp from activity cache
+    // PRIORIDADE 1: timestamp REDEEM da activity feed — única fonte confiável
+    // Para tênis/golf o market endDate é o fim do TORNEIO (futuro), não da partida.
     const redeemTs = pos._redeemTs || (window._redeemTsCache && window._redeemTsCache[pos.conditionId]);
     if (redeemTs) {
       const d = new Date(redeemTs * 1000);
@@ -712,19 +715,54 @@ function parseDateFromPos(pos, isClosed) {
       if (h >= 0 && h < 6) d.setUTCDate(d.getUTCDate() - 1);
       return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12);
     }
-    // 2. eventSlug date
+
+    // PRIORIDADE 2: createdAt (quando o registro da posição foi criado)
+    if (pos.createdAt) {
+      let dc;
+      if (typeof pos.createdAt==='string' && /^\d{4}-\d{2}-\d{2}$/.test(pos.createdAt)) {
+        const [y,m,d] = pos.createdAt.split('-').map(Number);
+        dc = new Date(y,m-1,d,12);
+      } else { dc = new Date(pos.createdAt); }
+      if (!isNaN(dc) && dc <= todayEOD()) return dc;
+    }
+
+    // PRIORIDADE 3: PRIMEIRA data no eventSlug (data da partida, não do torneio)
     const slug = pos.eventSlug || pos.slug || '';
     const slugMatches = slug.match(/(\d{4}-\d{2}-\d{2})/g);
     if (slugMatches && slugMatches.length) {
-      const last = slugMatches[slugMatches.length - 1];
-      const [y,m,day] = last.split('-').map(Number);
-      if (y>2000 && m>=1 && m<=12 && day>=1 && day<=31) return new Date(y,m-1,day,12);
+      const [y,m,day] = slugMatches[0].split('-').map(Number);
+      if (y>2000 && y<=new Date().getFullYear()+1 && m>=1 && m<=12 && day>=1 && day<=31) {
+        const ds = new Date(y,m-1,day,12);
+        if (ds <= todayEOD()) return ds;
+      }
     }
+
+    // PRIORIDADE 4: startDate — somente se não for futuro
+    if (pos.startDate) {
+      let dsd;
+      if (typeof pos.startDate==='string' && /^\d{4}-\d{2}-\d{2}$/.test(pos.startDate)) {
+        const [y,m,d] = pos.startDate.split('-').map(Number);
+        dsd = new Date(y,m-1,d,12);
+      } else { dsd = new Date(pos.startDate); }
+      if (!isNaN(dsd) && dsd <= todayEOD()) return dsd;
+    }
+
+    // PRIORIDADE 5: endDate — ÚLTIMO RECURSO e somente se não for futuro
+    // Deliberadamente por último: para tênis/golf é a data fim do torneio, não da partida
+    if (pos.endDate) {
+      let ded;
+      if (typeof pos.endDate==='string' && /^\d{4}-\d{2}-\d{2}$/.test(pos.endDate)) {
+        const [y,m,d] = pos.endDate.split('-').map(Number);
+        ded = new Date(y,m-1,d,12);
+      } else { ded = new Date(pos.endDate); }
+      if (!isNaN(ded) && ded <= todayEOD()) return ded;
+    }
+
+    return null; // nenhuma data válida no passado — mostra vazio na UI
   }
-  // 3. startDate > createdAt > endDate
-  const ts = isClosed
-    ? (pos.startDate || pos.createdAt || pos.endDate)
-    : (pos.startDate || pos.createdAt);
+
+  // Posições ATIVAS: endDate = data do evento futuro (countdown correto)
+  const ts = pos.startDate || pos.createdAt;
   if (!ts) return null;
   if (typeof ts==='string' && /^\d{4}-\d{2}-\d{2}$/.test(ts)) {
     const [y,m,d] = ts.split('-').map(Number);
@@ -910,11 +948,22 @@ async function fetchPortfolio(walletAddr) {
 function buildRedeemCache(activity) {
   const cache = {};
   if (!Array.isArray(activity)) return cache;
+  // Pass 1: REDEEM events (highest priority — exact resolution timestamp)
   activity.forEach(a => {
     if (a.type!=='REDEEM' && a.side!=='REDEEM') return;
     const cid = a.conditionId; if (!cid) return;
     const ts = parseInt(a.timestamp||0);
     if (ts>0 && (!cache[cid] || ts>cache[cid])) cache[cid] = ts;
+  });
+  // Pass 2: Fallback para posições sem REDEEM explícito (auto-liquidadas)
+  activity.forEach(a => {
+    const cid = a.conditionId; if (!cid) return;
+    if (cache[cid]) return; // já tem timestamp de redeem — mantém
+    const type = (a.type||a.side||'').toUpperCase();
+    if (type==='SELL' || type==='BUY' || type==='MERGE' || type==='SPLIT') {
+      const ts = parseInt(a.timestamp||0);
+      if (ts>0 && (!cache[cid] || ts>cache[cid])) cache[cid] = ts;
+    }
   });
   return cache;
 }
