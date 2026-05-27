@@ -709,13 +709,15 @@ function detAposta(pos) {
 // ═══════════════════════════════════════════════════
 function parseDateFromPos(pos, isClosed) {
   if (isClosed) {
-    // 1. REDEEM timestamp from activity cache
+    // 1. REDEEM timestamp from activity cache — convert to BRT (UTC-3)
     const redeemTs = pos._redeemTs || (window._redeemTsCache && window._redeemTsCache[pos.conditionId]);
     if (redeemTs) {
-      const d = new Date(redeemTs * 1000);
-      const h = d.getUTCHours();
-      if (h >= 0 && h < 6) d.setUTCDate(d.getUTCDate() - 1);
-      return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12);
+      // Convert to BRT: subtract 3 hours, then extract the calendar date
+      const BRT_OFFSET_MS = 3 * 60 * 60 * 1000;
+      const brtMs = redeemTs * 1000 - BRT_OFFSET_MS;
+      const d = new Date(brtMs);
+      // Use UTC methods on the BRT-shifted date to get the correct BRT calendar date
+      return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12);
     }
     // 2. eventSlug date
     const slug = pos.eventSlug || pos.slug || '';
