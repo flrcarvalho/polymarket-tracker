@@ -565,7 +565,7 @@ const API_KEY_ST   = 'poly_apikey_v1';
 
 // Immutable ordered list of closed positions (by conditionId, oldest first)
 // Rebuilt only when new positions appear — never reordered
-const ORDER_KEY    = 'poly_order_v6';    // [conditionId, ...] oldest→newest, immutable
+const ORDER_KEY    = 'poly_order_v7';  // v7: supports split positions    // [conditionId, ...] oldest→newest, immutable
 
 // ═══════════════════════════════════════════════════
 //  STATE
@@ -601,8 +601,9 @@ function saveOrder(a)  { localStorage.setItem(ORDER_KEY, JSON.stringify(a)); }
 function updateOrder(sortedByDate) {
   const existing = getOrder();
   const existingSet = new Set(existing);
+  // Use _splitId if available (split positions), otherwise conditionId
   const newIds = sortedByDate
-    .map(p => p.conditionId)
+    .map(p => p._splitId || p.conditionId)
     .filter(id => id && !existingSet.has(id));
   if (newIds.length) {
     saveOrder([...existing, ...newIds]);
@@ -611,17 +612,21 @@ function updateOrder(sortedByDate) {
 
 function getOrderedFechados() {
   const order = getOrder();
+  // Key by _splitId (which equals conditionId for single-buy positions)
   const byId = {};
-  dadosFechados.forEach(p => { if (p.conditionId) byId[p.conditionId] = p; });
-  // Return in immutable order, append any not yet in order at end
+  dadosFechados.forEach(p => {
+    const key = p._splitId || p.conditionId;
+    if (key) byId[key] = p;
+  });
   const result = [];
   const seen = new Set();
   order.forEach(id => {
     if (byId[id]) { result.push(byId[id]); seen.add(id); }
   });
-  // Any new ones not in order yet (shouldn't happen after updateOrder, but safety net)
+  // Safety net: any not yet in order
   dadosFechados.forEach(p => {
-    if (p.conditionId && !seen.has(p.conditionId)) result.push(p);
+    const key = p._splitId || p.conditionId;
+    if (key && !seen.has(key)) result.push(p);
   });
   return result;
 }
@@ -703,11 +708,8 @@ function detAposta(pos) {
 //  DATE PARSING — source of truth hierarchy
 // ═══════════════════════════════════════════════════
 function parseDateFromPos(pos, isClosed) {
-  const todayEOD = () => { const t = new Date(); t.setHours(23,59,59,999); return t; };
-
   if (isClosed) {
-    // PRIORIDADE 1: timestamp REDEEM da activity feed — única fonte confiável
-    // Para tênis/golf o market endDate é o fim do TORNEIO (futuro), não da partida.
+    // 1. REDEEM timestamp from activity cache
     const redeemTs = pos._redeemTs || (window._redeemTsCache && window._redeemTsCache[pos.conditionId]);
     if (redeemTs) {
       const d = new Date(redeemTs * 1000);
@@ -715,54 +717,19 @@ function parseDateFromPos(pos, isClosed) {
       if (h >= 0 && h < 6) d.setUTCDate(d.getUTCDate() - 1);
       return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12);
     }
-
-    // PRIORIDADE 2: createdAt (quando o registro da posição foi criado)
-    if (pos.createdAt) {
-      let dc;
-      if (typeof pos.createdAt==='string' && /^\d{4}-\d{2}-\d{2}$/.test(pos.createdAt)) {
-        const [y,m,d] = pos.createdAt.split('-').map(Number);
-        dc = new Date(y,m-1,d,12);
-      } else { dc = new Date(pos.createdAt); }
-      if (!isNaN(dc) && dc <= todayEOD()) return dc;
-    }
-
-    // PRIORIDADE 3: PRIMEIRA data no eventSlug (data da partida, não do torneio)
+    // 2. eventSlug date
     const slug = pos.eventSlug || pos.slug || '';
     const slugMatches = slug.match(/(\d{4}-\d{2}-\d{2})/g);
     if (slugMatches && slugMatches.length) {
-      const [y,m,day] = slugMatches[0].split('-').map(Number);
-      if (y>2000 && y<=new Date().getFullYear()+1 && m>=1 && m<=12 && day>=1 && day<=31) {
-        const ds = new Date(y,m-1,day,12);
-        if (ds <= todayEOD()) return ds;
-      }
+      const last = slugMatches[slugMatches.length - 1];
+      const [y,m,day] = last.split('-').map(Number);
+      if (y>2000 && m>=1 && m<=12 && day>=1 && day<=31) return new Date(y,m-1,day,12);
     }
-
-    // PRIORIDADE 4: startDate — somente se não for futuro
-    if (pos.startDate) {
-      let dsd;
-      if (typeof pos.startDate==='string' && /^\d{4}-\d{2}-\d{2}$/.test(pos.startDate)) {
-        const [y,m,d] = pos.startDate.split('-').map(Number);
-        dsd = new Date(y,m-1,d,12);
-      } else { dsd = new Date(pos.startDate); }
-      if (!isNaN(dsd) && dsd <= todayEOD()) return dsd;
-    }
-
-    // PRIORIDADE 5: endDate — ÚLTIMO RECURSO e somente se não for futuro
-    // Deliberadamente por último: para tênis/golf é a data fim do torneio, não da partida
-    if (pos.endDate) {
-      let ded;
-      if (typeof pos.endDate==='string' && /^\d{4}-\d{2}-\d{2}$/.test(pos.endDate)) {
-        const [y,m,d] = pos.endDate.split('-').map(Number);
-        ded = new Date(y,m-1,d,12);
-      } else { ded = new Date(pos.endDate); }
-      if (!isNaN(ded) && ded <= todayEOD()) return ded;
-    }
-
-    return null; // nenhuma data válida no passado — mostra vazio na UI
   }
-
-  // Posições ATIVAS: endDate = data do evento futuro (countdown correto)
-  const ts = pos.startDate || pos.createdAt;
+  // 3. startDate > createdAt > endDate
+  const ts = isClosed
+    ? (pos.startDate || pos.createdAt || pos.endDate)
+    : (pos.startDate || pos.createdAt);
   if (!ts) return null;
   if (typeof ts==='string' && /^\d{4}-\d{2}-\d{2}$/.test(ts)) {
     const [y,m,d] = ts.split('-').map(Number);
@@ -948,22 +915,11 @@ async function fetchPortfolio(walletAddr) {
 function buildRedeemCache(activity) {
   const cache = {};
   if (!Array.isArray(activity)) return cache;
-  // Pass 1: REDEEM events (highest priority — exact resolution timestamp)
   activity.forEach(a => {
     if (a.type!=='REDEEM' && a.side!=='REDEEM') return;
     const cid = a.conditionId; if (!cid) return;
     const ts = parseInt(a.timestamp||0);
     if (ts>0 && (!cache[cid] || ts>cache[cid])) cache[cid] = ts;
-  });
-  // Pass 2: Fallback para posições sem REDEEM explícito (auto-liquidadas)
-  activity.forEach(a => {
-    const cid = a.conditionId; if (!cid) return;
-    if (cache[cid]) return; // já tem timestamp de redeem — mantém
-    const type = (a.type||a.side||'').toUpperCase();
-    if (type==='SELL' || type==='BUY' || type==='MERGE' || type==='SPLIT') {
-      const ts = parseInt(a.timestamp||0);
-      if (ts>0 && (!cache[cid] || ts>cache[cid])) cache[cid] = ts;
-    }
   });
   return cache;
 }
@@ -1001,6 +957,8 @@ function reconciliarRedeems(fechados, activity, activeCids) {
     const redeemTs      = redeems.reduce((max,r) => Math.max(max, parseInt(r.timestamp||0)), 0);
     extras.push({
       conditionId:  cid,
+      _splitId:     cid,  // reconciled positions are always single-buy
+      _splitTotal:  1,
       title:        meta.title || meta.market || '',
       asset:        meta.asset || '',
       avgPrice,
@@ -1013,6 +971,81 @@ function reconciliarRedeems(fechados, activity, activeCids) {
     });
   });
   return [...fechados, ...extras];
+}
+
+
+// ═══════════════════════════════════════════════════
+//  SPLIT MULTI-BUY POSITIONS
+//  When same outcome was bought multiple times, expand
+//  into individual entries (one per BUY transaction)
+// ═══════════════════════════════════════════════════
+function splitMultiBuys(fechados, activity) {
+  if (!Array.isArray(activity) || !activity.length) {
+    // No activity: just assign _splitId = conditionId
+    fechados.forEach(p => { p._splitId = p._splitId || p.conditionId || ''; });
+    return fechados;
+  }
+
+  // Build activity BUY map: conditionId → [buy events sorted by timestamp asc]
+  const buyMap = {};
+  activity.forEach(a => {
+    if (a.type !== 'BUY' && a.side !== 'BUY') return;
+    const cid = a.conditionId; if (!cid) return;
+    if (!buyMap[cid]) buyMap[cid] = [];
+    buyMap[cid].push(a);
+  });
+  // Sort each list oldest → newest
+  Object.values(buyMap).forEach(arr =>
+    arr.sort((a, b) => parseInt(a.timestamp||0) - parseInt(b.timestamp||0))
+  );
+
+  const result = [];
+  fechados.forEach(pos => {
+    const cid = pos.conditionId || '';
+    const buys = buyMap[cid] || [];
+
+    // Filter buys to only those that match this position's outcome (asset/side)
+    // Polymarket activity includes buys for YES and NO; keep only matching side
+    const matchBuys = buys.filter(b => {
+      // If pos has asset field, match it; otherwise keep all
+      if (pos.asset && b.asset && pos.asset !== b.asset) return false;
+      return true;
+    });
+
+    if (matchBuys.length <= 1) {
+      // Single buy or no activity match — no split needed
+      pos._splitId = cid;
+      pos._splitTotal = 1;
+      result.push(pos);
+      return;
+    }
+
+    // Multiple buys — split into individual positions
+    const totalStakeCalc = matchBuys.reduce((s, b) =>
+      s + parseFloat(b.size||0) * parseFloat(b.price||0), 0);
+    const totalPnl = parseFloat(pos.cashPnl || 0);
+
+    matchBuys.forEach((buy, i) => {
+      const thisStake = parseFloat(buy.size||0) * parseFloat(buy.price||0);
+      const fraction  = totalStakeCalc > 0 ? thisStake / totalStakeCalc : 1/matchBuys.length;
+      const thisPnl   = totalPnl * fraction;
+
+      const split = Object.assign({}, pos, {
+        _splitId:        cid + '__' + i,
+        _splitIndex:     i,
+        _splitTotal:     matchBuys.length,
+        _buyTimestamp:   parseInt(buy.timestamp || 0),
+        initialValue:    thisStake,
+        avgPrice:        parseFloat(buy.price || pos.avgPrice || 0),
+        cashPnl:         thisPnl,
+        // Keep original conditionId for date/title lookup
+        conditionId:     cid,
+      });
+      result.push(split);
+    });
+  });
+
+  return result;
 }
 
 function setStatus(msg, type) {
@@ -1065,11 +1098,13 @@ async function buscar() {
     // Recover positions fully redeemed (gone from /positions API, only in activity)
     const activeCids = new Set(allPos.map(p => p.conditionId).filter(Boolean));
     dadosFechados = reconciliarRedeems(dadosFechados, activity, activeCids);
+    // Split positions with multiple BUY transactions into individual entries
+    dadosFechados = splitMultiBuys(dadosFechados, activity);
 
     // Sort fechados by date for initial order insertion
     const sortedForOrder = [...dadosFechados].sort((a,b) => {
-      const da = parseDateFromPos(a,true) || new Date(0);
-      const db = parseDateFromPos(b,true) || new Date(0);
+      const da = (a._buyTimestamp ? new Date(a._buyTimestamp*1000) : parseDateFromPos(a,true)) || new Date(0);
+      const db = (b._buyTimestamp ? new Date(b._buyTimestamp*1000) : parseDateFromPos(b,true)) || new Date(0);
       return da - db;
     });
     updateOrder(sortedForOrder);
@@ -1201,7 +1236,7 @@ function renderAtivasTable() {
     dadosAtivos.map(p => {
       const cur = parseFloat(p.currentValue||0), ini = parseFloat(p.initialValue||0);
       const pct = ini>0 ? (cur-ini)/ini*100 : 0;
-      const cid = p.conditionId||'';
+      const cid = p._splitId || p.conditionId||'';  // _splitId for actives too
       const sel = assign[cid]||'';
       const opts = buildTipsterOpts(tipsters, sel);
       const tipSel = `<select onchange="assignTipster(this,'${cid}')" class="${sel?'':'needs-tipster'}" style="background:var(--bg4);border:1px solid ${sel?'var(--border2)':'var(--amber)'};border-radius:4px;padding:3px 6px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer">${opts}</select>`;
@@ -1230,12 +1265,15 @@ function renderFechadasTable() {
     '<tr><th>Mercado</th><th>Modalidade</th><th>Data partida</th><th>Tipster</th><th>Res</th><th>Stake USD</th><th>P&L $</th><th>Odd</th></tr>',
     [...ordered].reverse().map(p => {
       const pnl = pnlUSD(p), res = pnl>0?'W':'L';
-      const cid = p.conditionId||'';
+      const cid = p._splitId || p.conditionId||'';  // use _splitId as storage key
       const sel = assign[cid]||'';
       const sport = detEs(p.title||'');
       const opts = buildTipsterOpts(tipsters, sel);
       const tipSel = `<select onchange="assignTipsterFec(this,'${cid}')" class="${sel?'':'needs-tipster'}" style="background:var(--bg4);border:1px solid ${sel?'var(--border2)':'var(--amber)'};border-radius:4px;padding:3px 6px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer;min-width:90px">${opts}</select>`;
-      return `<tr><td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,55)}</td><td class="muted mono" style="font-size:10px">${sport}</td><td class="mono muted">${toBR(p,true)}</td><td>${tipSel}</td><td><span class="badge badge-${res}">${res}</span></td><td class="mono">${fu(stakeUSD(p))}</td><td class="mono ${pnl>=0?'green':'red'}">${pnl>=0?'+':''}${fu(pnl)}</td><td class="mono amber">${nf(calcOdd(p),4)}</td></tr>`;
+      const splitBadge = p._splitTotal > 1
+        ? `<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(91,156,246,.15);color:var(--blue);font-family:'IBM Plex Mono',monospace;margin-left:5px">${p._splitIndex+1}/${p._splitTotal}</span>`
+        : '';
+      return `<tr><td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,55)}${splitBadge}</td><td class="muted mono" style="font-size:10px">${sport}</td><td class="mono muted">${toBR(p,true)}</td><td>${tipSel}</td><td><span class="badge badge-${res}">${res}</span></td><td class="mono">${fu(stakeUSD(p))}</td><td class="mono ${pnl>=0?'green':'red'}">${pnl>=0?'+':''}${fu(pnl)}</td><td class="mono amber">${nf(calcOdd(p),4)}</td></tr>`;
     }).join('')
   );
 }
@@ -1270,7 +1308,7 @@ function renderPosicoesAll() {
     fil.map(p => {
       const pnl = pnlUSD(p), res = p._r;
       const date = p._c ? `<span class="mono muted" style="font-size:11px">${toBR(p,true)}</span>` : dateBadge(p.endDate);
-      const tip  = assign[p.conditionId||'']||'—';
+      const tip  = assign[cid]||'—';
       const sport = detEs(p.title||'');
       return `<tr><td><span class="badge badge-${res==='ativa'?'ativa':res}">${res}</span></td><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,55)}</td><td>${date}</td><td style="font-size:11px;color:var(--text2)">${tip}</td><td class="muted mono" style="font-size:10px">${sport}</td><td class="mono">${fu(stakeUSD(p))}</td><td class="mono amber">${nf(calcOdd(p),4)}</td><td class="mono ${res==='W'?'green':res==='L'?'red':''}">${res==='ativa'?'—':((pnl>=0?'+':'')+fu(pnl))}</td></tr>`;
     }).join('')
@@ -1369,7 +1407,7 @@ function renderTSV() {
   const thead   = COLS.map(c => `<th>${c}</th>`).join('');
 
   const rows = ordered.map((pos, ri) => {
-    const cid     = pos.conditionId||'';
+    const cid     = pos._splitId || pos.conditionId||'';  // split key
     const isCopied= copied.has(cid);
     const assign  = getAssign();
     const tipsters= getTipsters();
@@ -1395,7 +1433,7 @@ function renderTSV() {
       `<td><input value="Polymarket" data-row="${ri}" data-col="3" oninput="onTSVEdit(this)"/></td>`,
       `<td><input value="Feca [Eu]" data-row="${ri}" data-col="4" oninput="onTSVEdit(this)"/></td>`,
       `<td><input value="${aposta}" data-row="${ri}" data-col="5" oninput="onTSVEdit(this)"/></td>`,
-      `<td><input value="${(pos.title||'').replace(/"/g,'&quot;')}" data-row="${ri}" data-col="6" oninput="onTSVEdit(this)"/></td>`,
+      `<td><input value="${(pos.title||'').replace(/\x22/g,'&quot;')}${pos._splitTotal > 1 ? ' ['+String(pos._splitIndex+1)+'/'+String(pos._splitTotal)+']' : ''}" data-row="${ri}" data-col="6" oninput="onTSVEdit(this)"/></td>`,
       `<td><input value="${nf(stakeB,2)}" data-row="${ri}" data-col="7" oninput="onTSVEdit(this)"/></td>`,
       `<td><input value="${nf(odd,4)}" data-row="${ri}" data-col="8" oninput="onTSVEdit(this)"/></td>`,
       `<td><input value="${res}" class="res-${res}" data-row="${ri}" data-col="9" oninput="onTSVResEdit(this)"/></td>`,
@@ -1406,7 +1444,7 @@ function renderTSV() {
 
   wrap.innerHTML = `<table class="tsv-tbl"><colgroup>${colDefs}</colgroup><thead><tr>${thead}</tr></thead><tbody id="tsv-tbody">${rows}</tbody></table>`;
 
-  const copiadas  = ordered.filter(p => copied.has(p.conditionId||'')).length;
+  const copiadas  = ordered.filter(p => copied.has(p._splitId || p.conditionId||'')).length;
   updateTSVCounters(ordered.length, copiadas);
   // Init column resizing after render
   setTimeout(initTSVColResize, 50);
@@ -1444,7 +1482,7 @@ function toggleCopied(chk) {
   if (row) row.className = chk.checked ? 'row-copied' : '';
   // Update counters
   const ordered  = getOrderedFechados();
-  const copiadas = ordered.filter(p => copied.has(p.conditionId||'')).length;
+  const copiadas = ordered.filter(p => copied.has(p._splitId || p.conditionId||'')).length;
   updateTSVCounters(ordered.length, copiadas);
 }
 
@@ -1492,7 +1530,7 @@ function copiarPendentes() {
     });
 
     const ordered  = getOrderedFechados();
-    const copiadas = ordered.filter(p => copied.has(p.conditionId||'')).length;
+    const copiadas = ordered.filter(p => copied.has(p._splitId || p.conditionId||'')).length;
     updateTSVCounters(ordered.length, copiadas);
 
     const btn = document.getElementById('btnCopiarTSV');
@@ -1546,7 +1584,7 @@ function getResRows() {
   const assign = getAssign();
   const rows = getOrderedFechados().map(p => {
     const iso     = toISO(p, true);
-    const tipster = assign[p.conditionId||'']||'';
+    const tipster = assign[p._splitId || p.conditionId||'']||'';
     const sport   = detEs(p.title||'');
     const pnl     = pnlUSD(p);
     const stake   = stakeUSD(p);
