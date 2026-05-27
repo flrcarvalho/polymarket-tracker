@@ -1026,9 +1026,19 @@ function splitMultiBuys(fechados, activity) {
     const totalPnl = parseFloat(pos.cashPnl || 0);
 
     matchBuys.forEach((buy, i) => {
-      const thisStake = parseFloat(buy.size||0) * parseFloat(buy.price||0);
-      const fraction  = totalStakeCalc > 0 ? thisStake / totalStakeCalc : 1/matchBuys.length;
-      const thisPnl   = totalPnl * fraction;
+      const price     = parseFloat(buy.price || 0);
+      const shares    = parseFloat(buy.size  || 0);  // shares bought in this tx
+      // stake = shares * price (USDC spent)
+      const thisStake = shares * price;
+      // Each share pays out 1 USDC if win — pnl per buy = shares - stake
+      // This correctly preserves the individual odd (1/price) for each buy
+      const thisPnl   = price > 0
+        ? shares - thisStake          // = shares*(1-price) = stake*(1/price - 1)
+        : totalPnl / matchBuys.length; // fallback if no price
+
+      // Adjust pnl sign: if position was a LOSS, flip to negative proportionally
+      const isWin = parseFloat(pos.cashPnl || 0) > 0;
+      const adjustedPnl = isWin ? thisPnl : -thisStake; // loss = lose your stake
 
       const split = Object.assign({}, pos, {
         _splitId:        cid + '__' + i,
@@ -1036,9 +1046,8 @@ function splitMultiBuys(fechados, activity) {
         _splitTotal:     matchBuys.length,
         _buyTimestamp:   parseInt(buy.timestamp || 0),
         initialValue:    thisStake,
-        avgPrice:        parseFloat(buy.price || pos.avgPrice || 0),
-        cashPnl:         thisPnl,
-        // Keep original conditionId for date/title lookup
+        avgPrice:        price,        // individual buy price → correct individual odd
+        cashPnl:         adjustedPnl,
         conditionId:     cid,
       });
       result.push(split);
