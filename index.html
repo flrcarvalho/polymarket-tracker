@@ -655,6 +655,30 @@ const ESPORTS_GAMES = {
 function detEs(t) {
   if (!t) return 'Outro';
   const s = t.toLowerCase();
+
+  // ── Explicit game prefix check (Polymarket format: "Game: Team vs Team") ──
+  // These are checked FIRST so multi-game orgs (BetBoom, NaVi, Liquid...) 
+  // don't get misclassified by team-name patterns
+  if (/^dota 2[:\s]/.test(s))            return 'Dota 2';
+  if (/^counter.strike[:\s]/.test(s))    return 'CS2';
+  if (/^league of legends[:\s]/.test(s)) return 'League of Legends';
+  if (/^\blol\b[:\s]/.test(s))          return 'League of Legends';
+  if (/^valorant[:\s]/.test(s))          return 'Valorant';
+  if (/^call of duty[:\s]/.test(s))      return 'Call of Duty';
+  if (/^rocket league[:\s]/.test(s))     return 'Rocket League';
+  if (/^overwatch[:\s]/.test(s))         return 'Overwatch';
+  if (/^rainbow six[:\s]/.test(s))       return 'Rainbow Six';
+  if (/^\bpubg\b[:\s]/.test(s))         return 'PUBG';
+  if (/^starcraft[:\s]/.test(s))         return 'StarCraft';
+  if (/^apex legends[:\s]/.test(s))      return 'Apex Legends';
+  if (/^fortnite[:\s]/.test(s))          return 'Fortnite';
+  if (/^roland garros[:\s]/.test(s))     return 'Tênis';
+  if (/^\batp\b/.test(s))               return 'Tênis';
+  if (/^\bwta\b/.test(s))               return 'Tênis';
+
+  // ── Standard checks ──
+  // NBA team names (for markets like "Spurs vs. Thunder")
+  if (/\b(lakers|celtics|warriors|nets|knicks|bulls|heat|spurs|nuggets|clippers|suns|mavericks|thunder|bucks|raptors|pistons|pacers|cavaliers|76ers|sixers|wizards|hawks|hornets|pelicans|grizzlies|jazz|timberwolves|blazers|trail blazers|kings|rockets|magic|bobcats|supersonics)\b/.test(s)) return 'NBA';
   if (/\bnba\b/.test(s)) return 'NBA';
   if (/\bnfl\b/.test(s)) return 'NFL';
   if (/\bnhl\b/.test(s)) return 'NHL';
@@ -1319,6 +1343,7 @@ function renderPosicoesAll() {
     fil.map(p => {
       const pnl = pnlUSD(p), res = p._r;
       const date = p._c ? `<span class="mono muted" style="font-size:11px">${toBR(p,true)}</span>` : dateBadge(p.endDate);
+      const cid  = p._splitId || p.conditionId||'';
       const tip  = assign[cid]||'—';
       const sport = detEs(p.title||'');
       return `<tr><td><span class="badge badge-${res==='ativa'?'ativa':res}">${res}</span></td><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,55)}</td><td>${date}</td><td style="font-size:11px;color:var(--text2)">${tip}</td><td class="muted mono" style="font-size:10px">${sport}</td><td class="mono">${fu(stakeUSD(p))}</td><td class="mono amber">${nf(calcOdd(p),4)}</td><td class="mono ${res==='W'?'green':res==='L'?'red':''}">${res==='ativa'?'—':((pnl>=0?'+':'')+fu(pnl))}</td></tr>`;
