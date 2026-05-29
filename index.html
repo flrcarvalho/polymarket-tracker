@@ -88,6 +88,23 @@ table.tbl tr:hover td{background:rgba(255,255,255,.02)}
 .nav-logo{width:16px;height:16px;border-radius:3px;object-fit:contain;flex-shrink:0;opacity:.85}
 .nav-item.active .nav-logo{opacity:1}
 .nav-item:hover .nav-logo{opacity:1}
+.hamburger{display:none;flex-direction:column;gap:4px;cursor:pointer;padding:6px;border:none;background:transparent}
+.hamburger span{display:block;width:18px;height:2px;background:var(--text2);border-radius:2px;transition:all .2s}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99}
+.sidebar-overlay.visible{display:block}
+@media (max-width:768px){
+  .sidebar{transform:translateX(-100%);transition:transform .22s ease;z-index:200}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .topbar{left:0;padding:0 1rem}
+  .hamburger{display:flex}
+  .main-content{padding:1rem .9rem;margin-top:44px}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)!important}
+  .tipster-grid{grid-template-columns:1fr 1fr!important}
+  .cur-btns{margin-left:0}
+  .page-header{flex-direction:column;align-items:flex-start}
+  .tsv-wrap{max-height:calc(100vh - 200px)}
+}
 .casa-logo-header{height:28px;width:auto;max-width:100px;object-fit:contain;border-radius:4px}
 .cur-btns{display:flex;align-items:center;gap:0;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;overflow:hidden}
 .cur-btn{padding:5px 12px;font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;border:none;cursor:pointer;transition:all .12s;background:transparent;color:var(--text3)}
@@ -275,8 +292,12 @@ table.poly-tbl td input:focus,table.poly-tbl td select:focus{background:rgba(0,2
   </div>
 </aside>
 
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 <div class="main">
   <div class="topbar">
+    <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
     <span class="topbar-title" id="topbarTitle">Dashboard</span>
     <div class="topbar-right">
       <span class="status-pill" id="statusPill"></span>
@@ -327,6 +348,12 @@ table.poly-tbl td input:focus,table.poly-tbl td select:focus{background:rgba(0,2
       </div>
       <div class="card">
         <div class="card-header"><span class="card-title">Encerradas</span><span class="muted mono" id="cnt-fechadas" style="font-size:10px">0</span></div>
+        <div style="padding:.55rem 1rem;border-bottom:1px solid var(--border);background:var(--bg3);display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <input id="dash-search" placeholder="Buscar mercado..." oninput="dashSearch=this.value;renderFechadasTable()" style="background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:4px 10px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;outline:none;flex:1;min-width:160px;max-width:280px"/>
+          <button class="btn btn-sm" id="df-all" onclick="setDashFilter('all',this)" style="border-color:var(--green);color:var(--green)">Todas</button>
+          <button class="btn btn-sm" id="df-W" onclick="setDashFilter('W',this)">Ganhas</button>
+          <button class="btn btn-sm" id="df-L" onclick="setDashFilter('L',this)">Perdidas</button>
+        </div>
         <div class="card-body tbl-wrap" id="tbl-fechadas"><div class="empty-state">Nenhuma posição encerrada.</div></div>
       </div>
     </div>
@@ -400,6 +427,12 @@ table.poly-tbl td input:focus,table.poly-tbl td select:focus{background:rgba(0,2
           <div class="card-body" style="display:flex;align-items:center;justify-content:center">
             <div class="chart-wrap" style="height:280px;max-width:400px;width:100%"><canvas id="chartDonut"></canvas></div>
           </div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-header"><span class="card-title">ROI Acumulado por Tipster</span></div>
+        <div class="card-body" style="padding:.5rem 1rem 1rem">
+          <div class="chart-wrap" style="height:280px"><canvas id="chartTipsterROI"></canvas></div>
         </div>
       </div>
       <div class="card" style="margin-bottom:1rem">
@@ -581,7 +614,10 @@ let resDateTo     = '';
 let calMonth      = null;
 let chartPL       = null;
 let chartDonut    = null;
+let chartTipsterROI = null;
 let posFilter     = 'all';
+let dashFilter    = 'all';
+let dashSearch    = '';
 
 // ═══════════════════════════════════════════════════
 //  STORAGE HELPERS
@@ -870,7 +906,7 @@ async function getCotacao(ds) {
     const j = await r.json();
     const v = j?.value?.[0]?.cotacaoVenda;
     if (v) { c[ds] = v; localStorage.setItem(BCB_KEY, JSON.stringify(c)); return v; }
-  } catch(e) {}
+  } catch(e) { console.warn('BCB cotação error', e); }
   return null;
 }
 
@@ -904,7 +940,7 @@ async function rpcBalance(token, wallet) {
         body: JSON.stringify({jsonrpc:'2.0',method:'eth_call',params:[{to:token,data},'latest'],id:1}) });
       const j = await r.json();
       if (j.result && j.result.length>2) return parseInt(j.result,16)/1e6;
-    } catch(e) {}
+    } catch(e) { console.warn('rpcBalance error', e); }
   }
   return 0;
 }
@@ -920,7 +956,7 @@ async function fetchCash(walletAddr) {
     const [pusd, usdce] = await Promise.all([rpcBalance(PUSD,proxy), rpcBalance(USDC_E,proxy)]);
     const cash = pusd + usdce;
     if (cash > 0) return cash;
-  } catch(e) {}
+  } catch(e) { console.warn('fetchCash RPC error', e); }
   return 0;
 }
 
@@ -931,7 +967,7 @@ async function fetchPortfolio(walletAddr) {
     const data = await r.json();
     if (Array.isArray(data) && data.length>0) return parseFloat(data[0].value||0);
     if (data?.value !== undefined) return parseFloat(data.value);
-  } catch(e) {}
+  } catch(e) { console.warn('fetchPortfolio error', e); }
   return 0;
 }
 
@@ -1100,12 +1136,27 @@ async function buscar() {
   try {
     const B = 'https://data-api.polymarket.com';
     const [rPos, rAct] = await Promise.all([
-      fetch(`${B}/positions?user=${w}&sizeThreshold=.1&limit=100`),
+      fetch(`${B}/positions?user=${w}&sizeThreshold=.1&limit=500`),
       fetch(`${B}/activity?user=${w}&limit=500`)
     ]);
     if (!rPos.ok) throw new Error('HTTP ' + rPos.status);
-    let [allPos, act1] = await Promise.all([rPos.json(), rAct.ok ? rAct.json() : []]);
-    allPos = Array.isArray(allPos) ? allPos : [];
+    let [page1Pos, act1] = await Promise.all([rPos.json(), rAct.ok ? rAct.json() : []]);
+    page1Pos = Array.isArray(page1Pos) ? page1Pos : [];
+
+    // Paginate positions (Polymarket API supports offset)
+    let allPos = [...page1Pos];
+    if (page1Pos.length === 500) {
+      for (let off = 500; off <= 5000; off += 500) {
+        try {
+          const rp = await fetch(`${B}/positions?user=${w}&sizeThreshold=.1&limit=500&offset=${off}`);
+          if (!rp.ok) break;
+          const pg = await rp.json();
+          if (!Array.isArray(pg) || !pg.length) break;
+          allPos = [...allPos, ...pg];
+          if (pg.length < 500) break;
+        } catch(e) { console.warn('positions pagination error', e); break; }
+      }
+    }
 
     // Paginate activity
     let activity = Array.isArray(act1) ? [...act1] : [];
@@ -1289,6 +1340,13 @@ function assignTipster(sel, conditionId) {
   renderTSV();
 }
 
+function setDashFilter(f, el) {
+  dashFilter = f;
+  ['all','W','L'].forEach(k => { const b=document.getElementById('df-'+k); if(b){b.style.borderColor='';b.style.color='';} });
+  if (el) { el.style.borderColor='var(--green)'; el.style.color='var(--green)'; }
+  renderFechadasTable();
+}
+
 function renderFechadasTable() {
   const el = document.getElementById('tbl-fechadas');
   document.getElementById('cnt-fechadas').textContent = dadosFechados.length;
@@ -1296,11 +1354,22 @@ function renderFechadasTable() {
   const assign   = getAssign();
   const tipsters = getTipsters();
   const ordered  = getOrderedFechados();
+
+  const q = (dashSearch||'').toLowerCase().trim();
+  const filtered = [...ordered].reverse().filter(p => {
+    const pnl = pnlUSD(p), res = pnl>0?'W':'L';
+    if (dashFilter !== 'all' && res !== dashFilter) return false;
+    if (q && !(p.title||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  if (!filtered.length) { el.innerHTML='<div class="empty-state">Nenhuma posição encontrada para o filtro aplicado.</div>'; return; }
+
   el.innerHTML = tw(
     '<tr><th>Mercado</th><th>Modalidade</th><th>Data partida</th><th>Tipster</th><th>Res</th><th>Stake USD</th><th>P&L $</th><th>Odd</th></tr>',
-    [...ordered].reverse().map(p => {
+    filtered.map(p => {
       const pnl = pnlUSD(p), res = pnl>0?'W':'L';
-      const cid = p._splitId || p.conditionId||'';  // use _splitId as storage key
+      const cid = p._splitId || p.conditionId||'';
       const sel = assign[cid]||'';
       const sport = detEs(p.title||'');
       const opts = buildTipsterOpts(tipsters, sel);
@@ -1673,9 +1742,88 @@ function renderResultados() {
   renderResStreaks(rows);
   renderCalendar();
   renderResDonut(rows);
+  renderResTipsterROIChart(rows);
   renderResTipsterCards(rows);
   renderResTipsterTable(rows);
   renderResSportCards(rows);
+}
+
+// ═══════════════════════════════════════════════════
+//  TIPSTER ROI CUMULATIVE CHART
+// ═══════════════════════════════════════════════════
+function renderResTipsterROIChart(rows) {
+  const canvas = document.getElementById('chartTipsterROI'); if (!canvas) return;
+  if (chartTipsterROI) { chartTipsterROI.destroy(); chartTipsterROI=null; }
+  const tipsters = getTipsters();
+  if (!tipsters.length) return;
+
+  // Build sorted unique dates
+  const allDates = [...new Set(rows.map(r=>r.iso).filter(Boolean))].sort();
+  if (allDates.length < 2) return;
+
+  const COLORS = ['#00d68f','#5b9cf6','#f0a030','#a78bfa','#2dd4bf','#f87171','#34d399','#fbbf24','#60a5fa','#c084fc'];
+  const isDark = document.documentElement.dataset.theme==='dark';
+  const tickCol = isDark?'#505060':'#a0a0b8';
+  const gridCol = isDark?'rgba(255,255,255,.05)':'rgba(0,0,0,.06)';
+
+  const datasets = tipsters.map((tip, idx) => {
+    const tipRows = rows.filter(r => r.tipster===tip);
+    if (!tipRows.length) return null;
+
+    // Build per-date cumulative ROI for this tipster
+    const byDate = {};
+    tipRows.forEach(r => {
+      if (!r.iso) return;
+      if (!byDate[r.iso]) byDate[r.iso] = {pnl:0, stake:0};
+      byDate[r.iso].pnl   += r.pnl;
+      byDate[r.iso].stake += r.stake;
+    });
+
+    let cumPnl=0, cumStake=0;
+    const points = allDates.map(d => {
+      if (byDate[d]) { cumPnl+=byDate[d].pnl; cumStake+=byDate[d].stake; }
+      return cumStake>0 ? parseFloat((cumPnl/cumStake*100).toFixed(2)) : null;
+    });
+
+    // Only include tipsters that have at least one data point
+    if (points.every(p=>p===null)) return null;
+
+    return {
+      label: tip,
+      data: points,
+      borderColor: COLORS[idx % COLORS.length],
+      backgroundColor: 'transparent',
+      tension: .3,
+      pointRadius: 0,
+      pointHitRadius: 8,
+      borderWidth: 2,
+    };
+  }).filter(Boolean);
+
+  if (!datasets.length) return;
+
+  const step = Math.max(1, Math.floor(allDates.length/16));
+  const labels = allDates.map((d,i) => {
+    if (i%step!==0 && i!==allDates.length-1) return '';
+    const pts=d.split('-'); return pts.length===3?`${pts[2]}/${pts[1]}`:d;
+  });
+
+  chartTipsterROI = new Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: { display:true, position:'top', labels:{ color:isDark?'#eeedf0':'#0f0f18', font:{size:11}, boxWidth:12, padding:10 } },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw !== null ? (ctx.raw>=0?'+':'')+ctx.raw.toFixed(2)+'%' : '—'}` } }
+      },
+      scales: {
+        x: { ticks:{color:tickCol,font:{size:9},maxRotation:90,minRotation:90,autoSkip:false,callback:(v,i)=>labels[i]||null}, grid:{display:false}, border:{display:false} },
+        y: { ticks:{color:tickCol,font:{size:10},callback:v=>(v>=0?'+':'')+v.toFixed(0)+'%'}, grid:{color:gridCol}, border:{display:false} }
+      }
+    }
+  });
 }
 
 function renderResKPIs(rows) {
@@ -2062,7 +2210,7 @@ async function runExtractor(casa, inputType, textVal, images, manualDate='') {
   let messages;
   if (inputType==='text') { messages=[{role:'user',content:userText}]; }
   else { const cp=images.map(b=>({type:'image',source:{type:'base64',media_type:b.mime||'image/png',data:b.data}})); cp.push({type:'text',text:userText}); messages=[{role:'user',content:cp}]; }
-  const resp = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:inputType==='image'?'claude-opus-4-5':'claude-sonnet-4-5',max_tokens:4000,system:sysPrompt,messages})});
+  const resp = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:inputType==='image'?'claude-opus-4-8':'claude-sonnet-4-6',max_tokens:4000,system:sysPrompt,messages})});
   const data = await resp.json();
   if (data.error) throw new Error(data.error.message);
   return data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
@@ -2289,6 +2437,29 @@ function initExtractors() {
   enablePasteExt('ext-superbet-ui');
   enablePasteExt('ext-generic-ui');
 }
+
+// ═══════════════════════════════════════════════════
+//  MOBILE SIDEBAR
+// ═══════════════════════════════════════════════════
+function toggleSidebar() {
+  const s = document.querySelector('.sidebar');
+  const o = document.getElementById('sidebarOverlay');
+  s.classList.toggle('open');
+  o.classList.toggle('visible');
+}
+function closeSidebar() {
+  document.querySelector('.sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('visible');
+}
+
+// Close sidebar when a nav item is clicked on mobile
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      if (window.innerWidth <= 768) closeSidebar();
+    });
+  });
+});
 
 // ═══════════════════════════════════════════════════
 //  BOOT
