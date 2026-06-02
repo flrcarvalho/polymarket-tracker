@@ -25,7 +25,13 @@ function proxy(targetUrl, req, res) {
     port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
     path: parsed.pathname + parsed.search,
     method: req.method,
-    headers: { 'Content-Type': 'application/json', 'User-Agent': 'polymarket-proxy/1.0' }
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Accept': 'application/json, */*',
+      'Origin': 'https://polymarket.com',
+      'Referer': 'https://polymarket.com/',
+    }
   };
   if (req.headers['x-api-key']) options.headers['x-api-key'] = req.headers['x-api-key'];
   if (req.headers['anthropic-version']) options.headers['anthropic-version'] = req.headers['anthropic-version'];
