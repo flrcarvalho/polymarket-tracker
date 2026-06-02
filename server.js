@@ -50,7 +50,7 @@ function proxy(targetUrl, req, res) {
 app.all('/api/poly/*', (req, res) => {
   const suffix = req.params[0];
   const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
-  proxy(`https://data-api.polymarket.com/${suffix}${qs}`, req, res);
+  proxy(`https://polymarket-proxy.flrcarvalho.workers.dev/${suffix}${qs}`, req, res);
 });
 
 app.all('/api/bcb/*', (req, res) => {
