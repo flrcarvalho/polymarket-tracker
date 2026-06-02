@@ -638,7 +638,7 @@ const ATP_PLAYERS = ['sinner','alcaraz','zverev','djokovic','shelton','fritz','d
 const WTA_PLAYERS = ['sabalenka','rybakina','swiatek','gauff','pegula','anisimova','andreeva','paolini','mboko','svitolina','muchova','noskova','alexandrova','osaka','keys','shnaider','hon','tauson'];
 const DARTS_PLAYERS = ['littler','humphries','van gerwen','price','clayton','josh rock','bunting','rob cross','aspinall','heta','van veen','peter wright','gary anderson','michael smith','van den bergh','cullen','noppert','rydz','dobey','pietersen','sherrock'];
 const SNOOKER_PLAYERS = ["o'sullivan","judd trump","selby","robertson","wilson","williams","zhao xintong","si jiahui","brecel","john higgins","murphy","hawkins","bingham","lisowski","ryan day"];
-const TENNIS_TOURS = ['atp','wta','australian open','roland garros','wimbledon','us open','french open','oeiras','madrid open','monte carlo','miami open','indian wells','barcelona open','estoril'];
+const TENNIS_TOURS = ['atp','wta','itf','australian open','roland garros','wimbledon','us open','french open','oeiras','madrid open','monte carlo','miami open','indian wells','barcelona open','estoril','birmingham classic','wta birmingham','queen\'s club','eastbourne','nottingham','halle','s-hertogenbosch','\'s-hertogenbosch','lyon','geneva','hamburg open','bastad','bucharest','chisinau','buenos aires','bogota','cordoba','santiago','geneva','lausanne','palermo','gdynia','prague','budapest','parma','istanbul','rabat','strasbourg','hertogenbosch','centurion','wichita','bogota','guadalajara','monterrey','birmingham'];
 const DARTS_TOURS  = ['pdc','premier league darts','world championship darts','grand slam of darts','world matchplay','uk open darts'];
 const ESPORTS_GAMES = {
   'Valorant':['valorant','\\bvct\\b','sentinels.*val','loud.*val','furia.*val','nrg.*val','100t.*val','evil geniuses.*val','cloud9.*val','team liquid.*val','mibr.*val','fnatic.*val','paper rex','drx.*val','\\bprx\\b.*val','gen\\.g.*val','zeta.*val','bilibili.*val','vitality.*val','guild.*val','navi.*val','kru esports'],
@@ -693,14 +693,14 @@ function detEs(t) {
   const hasSnookerMkt  = /\bframes\b|\bcentury\b/.test(s);
   const hasTennisP     = ATP_PLAYERS.some(p => s.includes(p)) || WTA_PLAYERS.some(p => s.includes(p));
   const hasTennisTour  = TENNIS_TOURS.some(p => s.includes(p));
-  const hasTennisMkt   = /\bgames\b|\bsets\b|\baces\b/.test(s) && !/\blegs\b|\bframes\b/.test(s);
+  const hasTennisMkt   = /\bgames\b|\bsets\b|\baces\b/.test(s) && !/\blegs\b|\bframes\b/.test(s) && !/games total|o\/u|over\/under|\btotal\b.*\bbo\d\b/.test(s);
   if (hasDartsPlayer || hasDartsTour || hasDartsMkt) return 'Dardos';
   if (hasSnookerP || hasSnookerMkt) return 'Snooker';
   if (hasTennisP || hasTennisTour || hasTennisMkt) return 'Tênis';
   for (const [game, patterns] of Object.entries(ESPORTS_GAMES)) {
     if (patterns.some(p => new RegExp(p,'i').test(s))) return game;
   }
-  if (/\bmap handicap\b|\bgame handicap\b|\besports\b|\be-sports\b|\bmap \d\b|\bbo\d\b/.test(s)) return 'E-Sports';
+  if (/\bmap handicap\b|\bgame handicap\b|\besports\b|\be-sports\b|\bmap \d\b|\bbo\d\b|^games total|^map total|^series total/.test(s)) return 'E-Sports';
   if (/basquete|basketball|\beuroleague\b/.test(s)) return 'Basquete';
   if (/baseball|beisebol|\bmlb\b/.test(s)) return 'Baseball';
   if (/volei|vôlei|volleyball/.test(s)) return 'Vôlei';
