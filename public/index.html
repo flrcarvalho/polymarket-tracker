@@ -960,7 +960,7 @@ function reconciliarRedeems(fechados, activity, activeCids) {
     const cid = a.conditionId; if (!cid) return;
     if (!actMap[cid]) actMap[cid] = {buys:[], redeems:[]};
     if (a.type==='REDEEM' || a.side==='REDEEM') actMap[cid].redeems.push(a);
-    else if (a.type==='BUY' || a.side==='BUY') actMap[cid].buys.push(a);
+    else if (a.type==='BUY' || a.side==='BUY' || a.type==='TRADE') actMap[cid].buys.push(a);
   });
 
   const extras = [];
