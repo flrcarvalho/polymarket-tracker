@@ -1030,6 +1030,8 @@ function splitMultiBuys(fechados, activity) {
     const matchBuys = buys.filter(b => {
       // If pos has asset field, match it; otherwise keep all
       if (pos.asset && b.asset && pos.asset !== b.asset) return false;
+      // Ignore micro-buys with stake under $1 (noise / rounding artefacts)
+      if (parseFloat(b.size || 0) * parseFloat(b.price || 0) < 1.0) return false;
       return true;
     });
 
