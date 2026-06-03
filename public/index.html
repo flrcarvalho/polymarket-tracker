@@ -1010,7 +1010,7 @@ function splitMultiBuys(fechados, activity) {
   // Build activity BUY map: conditionId → [buy events sorted by timestamp asc]
   const buyMap = {};
   activity.forEach(a => {
-    if (a.type !== 'BUY' && a.side !== 'BUY') return;
+    if (a.type !== 'BUY' && a.side !== 'BUY' && a.type !== 'TRADE') return;
     const cid = a.conditionId; if (!cid) return;
     if (!buyMap[cid]) buyMap[cid] = [];
     buyMap[cid].push(a);
