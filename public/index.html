@@ -13,7 +13,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 [data-theme="dark"]{--bg:#081320;--bg2:#0a1929;--bg3:#0d1f34;--bg4:#080f1a;--bg5:#0d1f34;--border:rgba(183,190,200,.08);--border2:rgba(183,190,200,.15);--border3:rgba(183,190,200,.25);--text:#ffffff;--text2:#B7BEC8;--text3:rgba(183,190,200,.5);--green:#00C896;--green-dim:rgba(0,200,150,.12);--red:#FF4757;--red-dim:rgba(255,71,87,.12);--blue:#1E90FF;--amber:#F5A623;--purple:#a78bfa;--teal:#00E5FF;}
-[data-theme="light"]{--bg:#0d1f34;--bg2:#0f2540;--bg3:#112844;--bg4:#142d4d;--bg5:#173256;--border:rgba(30,144,255,0.12);--border2:rgba(30,144,255,0.2);--border3:rgba(30,144,255,0.3);--text:#e8f4ff;--text2:#a0bcd8;--text3:#5a7a9a;--green:#00C896;--green-dim:rgba(0,200,150,0.12);--red:#FF4757;--red-dim:rgba(255,71,87,0.12);--blue:#1E90FF;--amber:#F5A623;--purple:#00E5FF;--teal:#00E5FF;}
+[data-theme="light"]{--bg:#f0f4f8;--bg2:#ffffff;--bg3:#ffffff;--bg4:#edf1f5;--bg5:#e2e8ef;--border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);--border3:rgba(0,0,0,0.22);--text:#0f0f18;--text2:#505068;--text3:#a0a0b8;--green:#00a876;--green-dim:rgba(0,168,118,0.08);--red:#d63050;--red-dim:rgba(214,48,80,0.08);--blue:#1565c0;--amber:#d97706;--purple:#7c3aed;--teal:#0d9488;}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;font-size:14px}
 .app{display:flex;min-height:100vh}
@@ -238,14 +238,40 @@ table.poly-tbl td input:focus,table.poly-tbl td select:focus{background:rgba(0,2
 /* topbar-title */
 .topbar-title{font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;color:rgba(183,190,200,.7)}
 
-/* Light mode — navy-blue variant, no overrides needed (vars handle it) */
+/* Light mode overrides */
+[data-theme="light"] .sidebar{background:#f0f4f8;border-right:1px solid rgba(0,0,0,0.08)}
+[data-theme="light"] .topbar{background:rgba(240,244,248,0.97);backdrop-filter:blur(10px);border-bottom:1px solid rgba(0,0,0,0.08)}
+[data-theme="light"] .nav-item{color:#505068}
+[data-theme="light"] .nav-item:hover{color:#1565c0;background:rgba(21,101,192,0.06)}
+[data-theme="light"] .nav-item.active{color:#1565c0;background:rgba(21,101,192,0.1);border-left-color:#1565c0}
+[data-theme="light"] .nav-group{color:rgba(45,50,58,0.55)}
+[data-theme="light"] .sidebar-bottom{border-top-color:rgba(0,0,0,0.08)}
+[data-theme="light"] .kpi{background:#ffffff;border:1px solid rgba(0,0,0,0.08)}
+[data-theme="light"] .kpi-label{color:rgba(15,15,24,0.45)}
+[data-theme="light"] .kpi-val{color:#0f0f18}
+[data-theme="light"] .kpi-sub{color:#a0a0b8}
+[data-theme="light"] .card{background:#ffffff;border:1px solid rgba(0,0,0,0.08)}
+[data-theme="light"] .card-header{background:rgba(240,244,248,0.8);border-bottom:1px solid rgba(0,0,0,0.06)}
+[data-theme="light"] .card-title{color:rgba(15,15,24,0.45)}
+[data-theme="light"] table.tbl th{background:#edf1f5;color:rgba(15,15,24,0.45)}
+[data-theme="light"] table.tbl td{color:#505068}
+[data-theme="light"] table.tbl tr:hover td{background:rgba(21,101,192,0.04)}
+[data-theme="light"] .sync-btn{background:#1565c0}
+[data-theme="light"] .btn-primary{background:#1565c0;border-color:#1565c0}
+[data-theme="light"] .topbar-title{color:rgba(15,15,24,0.6)}
+[data-theme="light"] .wallet-input{background:#ffffff;border-color:rgba(0,0,0,0.18);color:#0f0f18}
+/* Logo switching via CSS */
+.logo-dark{display:block}.logo-light{display:none}
+[data-theme="light"] .logo-dark{display:none}
+[data-theme="light"] .logo-light{display:block}
 </style>
 </head>
 <body>
 <div class="app">
 <aside class="sidebar">
   <div class="sidebar-logo">
-    <img id="sidebar-logo-img" src="/logo-dark.png" alt="FDC Capital · Betting Dashboard"/>
+    <img class="logo-dark" src="/logo-dark.png" alt="FDC Capital · Betting Dashboard"/>
+    <img class="logo-light" src="/logo-light.png" alt="FDC Capital · Betting Dashboard"/>
   </div>
   <nav class="sidebar-nav">
     <div class="nav-group" style="display:flex;align-items:center;gap:6px"><img src="data:image/svg+xml,%3Csvg%20width=%2211%22%20height=%2211%22%20viewBox=%220%200%20100%20100%22%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Ccircle%20cx=%2250%22%20cy=%2250%22%20r=%2250%22%20fill=%22%230070f3%22/%3E%3Ccircle%20cx=%2250%22%20cy=%2250%22%20r=%2222%22%20fill=%22white%22/%3E%3C/svg%3E" style="width:11px;height:11px;border-radius:50%;flex-shrink:0" alt=""/>Polymarket</div>
@@ -2010,8 +2036,6 @@ function toggleTheme() {
   h.dataset.theme=n;
   document.getElementById('themeLabel').textContent=n;
   localStorage.setItem('poly_theme_v2',n);
-  const logoImg=document.getElementById('sidebar-logo-img');
-  if(logoImg) logoImg.src = n==='light' ? '/logo-light.png' : '/logo-dark.png';
 }
 (()=>{ const t=localStorage.getItem('poly_theme_v2'); if(t){document.documentElement.dataset.theme=t;document.getElementById('themeLabel').textContent=t;} })();
 
