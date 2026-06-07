@@ -61,10 +61,13 @@ server/
 
 ## Design / Marca
 
-- Assets em `brand/` (logos SVG, favicons PNG, `site.webmanifest`).
-- Paleta nova: `--bg #0A0D12`, `--blue #2E8BFF`, `--green #2BC07E`, `--red #E5524B`.
-- **Cyan, purple e teal removidos** — não reintroduzir.
-- Nav active usa `var(--blue)` (azul = sinal), não verde.
+- **Token system:** `brand/tokens.css` é a fonte de verdade (copiado de `FDC Capital - Branding/pack/tokens/tokens.css`).
+- **Dois destinos de brand/**: ao atualizar assets, copiar para `brand/` E `server/public/brand/`. Railway só serve de `server/public/`.
+- Assets em `brand/`: logos SVG, favicons PNG/SVG, `site.webmanifest`, `tokens.css`.
+- Paleta: tokens.css define `--bg`, `--surface`, `--ink`, `--pos`, `--neg`, `--accent`, `--warn` etc.
+- O tracker usa nomes de alias (`--bg2`, `--text`, `--green`, `--red`, `--blue`, `--amber`) mapeados via bridge no `<style>` inline.
+- **Logos**: `fdc-logo-vertical-dark.svg` (sidebar dark) / `fdc-logo-vertical-light.svg` (sidebar light), com classe `.logo-dark`/`.logo-light` e CSS de troca automática.
+- **Cyan, purple, teal e emerald removidos** — paleta: só Electric Blue, Platinum, pos/neg/warn.
 
 ---
 

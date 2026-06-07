@@ -15,10 +15,34 @@
 
 
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/brand/tokens.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-[data-theme="dark"]{--bg:#0A0D12;--bg2:#12161D;--bg3:#161B22;--bg4:#1A2029;--bg5:#222831;--border:rgba(255,255,255,.05);--border2:rgba(255,255,255,.08);--border3:rgba(255,255,255,.20);--text:#EEF2F7;--text2:#95A1B0;--text3:#5E6775;--green:#2BC07E;--green-dim:rgba(43,192,126,.12);--red:#E5524B;--red-dim:rgba(229,82,75,.12);--blue:#2E8BFF;--amber:#E0A21A;}
-[data-theme="light"]{--bg:#F4F7FB;--bg2:#FFFFFF;--bg3:#FFFFFF;--bg4:#EDF2F7;--bg5:#EDF2F7;--border:rgba(10,15,25,.055);--border2:rgba(10,15,25,.10);--border3:rgba(10,15,25,.20);--text:#0E1626;--text2:#46586D;--text3:#7C8BA0;--green:#2BC07E;--green-dim:rgba(43,192,126,.08);--red:#E5524B;--red-dim:rgba(229,82,75,.08);--blue:#1E7CF0;--amber:#E0A21A;}
+/* ── Bridge: nomes internos do tracker → tokens FDC Capital ── */
+:root {
+  --bg2: var(--surface);      /* #12161D dark · #FFFFFF light */
+  --bg3: var(--surface-2);    /* #161B22 dark · #EDF2F7 light */
+  --bg4: var(--elevated);     /* #1A2029 dark · #FFFFFF light */
+  --bg5: var(--fdc-steel);    /* #222831 */
+  --border:  var(--line-2);   /* rgba(255,255,255,.05) dark · rgba(10,15,25,.055) light */
+  --border2: var(--line);     /* rgba(255,255,255,.08) dark · rgba(10,15,25,.10) light */
+  --border3: rgba(255,255,255,0.20);
+  --text:  var(--ink);        /* #EEF2F7 dark · #0E1626 light */
+  --text2: var(--ink-soft);   /* #95A1B0 dark · #46586D light */
+  --text3: var(--ink-mute);   /* #5E6775 dark · #7C8BA0 light */
+  --green:     var(--pos);
+  --green-dim: rgba(43,192,126,0.12);
+  --red:       var(--neg);
+  --red-dim:   rgba(229,82,75,0.12);
+  --blue:      var(--accent); /* #2E8BFF dark · #1E7CF0 light */
+  --amber:     var(--warn);
+}
+[data-theme="light"] {
+  --bg5: var(--surface-2);          /* #EDF2F7 — steel não existe no tema claro */
+  --border3: rgba(10,15,25,0.20);
+  --green-dim: rgba(43,192,126,0.08);
+  --red-dim: rgba(229,82,75,0.08);
+}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;font-size:15px}
 .app{display:flex;min-height:100vh}
@@ -250,16 +274,16 @@ table.poly-tbl td input:focus,table.poly-tbl td select:focus{background:rgba(0,2
 [data-theme="light"] .topbar-title{color:rgba(15,15,24,0.6)}
 [data-theme="light"] .nav-item{color:#505068}
 [data-theme="light"] .nav-item:hover{color:var(--text);background:rgba(46,139,255,.06)}
-[data-theme="light"] .nav-item.active{color:#1565c0;background:rgba(21,101,192,0.1);border-left-color:#1565c0;font-weight:600}
+[data-theme="light"] .nav-item.active{color:#1E7CF0;background:rgba(30,124,240,0.1);border-left-color:#1E7CF0;font-weight:600}
 [data-theme="light"] .nav-group{color:rgba(45,50,58,0.5)}
 [data-theme="light"] .sidebar-bottom{border-top-color:rgba(0,0,0,0.08)}
 [data-theme="light"] .kpi{background:#fff;border:1px solid rgba(0,0,0,0.08);box-shadow:0 1px 4px rgba(0,0,0,0.06)}
 [data-theme="light"] .kpi-label{color:rgba(15,15,24,0.42)}
 [data-theme="light"] .kpi-val{color:#0f0f18}
-[data-theme="light"] .kpi-val.green{color:#00875a}
-[data-theme="light"] .kpi-val.red{color:#c0392b}
-[data-theme="light"] .kpi-val.blue{color:#1565c0}
-[data-theme="light"] .kpi-val.amber{color:#b45309}
+[data-theme="light"] .kpi-val.green{color:#2BC07E}
+[data-theme="light"] .kpi-val.red{color:#E5524B}
+[data-theme="light"] .kpi-val.blue{color:#1E7CF0}
+[data-theme="light"] .kpi-val.amber{color:#E0A21A}
 [data-theme="light"] .kpi-sub{color:#a0a0b8}
 [data-theme="light"] .card{background:#fff;border:1px solid rgba(0,0,0,0.08);box-shadow:0 1px 4px rgba(0,0,0,0.05)}
 [data-theme="light"] .card-header{background:#f5f7fa;border-bottom:1px solid rgba(0,0,0,0.06)}
@@ -267,24 +291,24 @@ table.poly-tbl td input:focus,table.poly-tbl td select:focus{background:rgba(0,2
 [data-theme="light"] table.tbl th{background:#f0f4f8;color:rgba(15,15,24,0.42)}
 [data-theme="light"] table.tbl td{color:#505068}
 [data-theme="light"] table.tbl td:first-child{color:#0f0f18}
-[data-theme="light"] table.tbl tr:hover td{background:rgba(21,101,192,0.04)}
-[data-theme="light"] .green{color:#00875a}
-[data-theme="light"] .red{color:#c0392b}
-[data-theme="light"] .blue{color:#1565c0}
-[data-theme="light"] .amber{color:#b45309}
-[data-theme="light"] .muted{color:#a0a0b8}
+[data-theme="light"] table.tbl tr:hover td{background:rgba(30,124,240,0.04)}
+[data-theme="light"] .green{color:#2BC07E}
+[data-theme="light"] .red{color:#E5524B}
+[data-theme="light"] .blue{color:#1E7CF0}
+[data-theme="light"] .amber{color:#E0A21A}
+[data-theme="light"] .muted{color:#7C8BA0}
 [data-theme="light"] .mono{color:#2D323A}
-[data-theme="light"] .badge-W{background:rgba(0,135,90,0.1);color:#00875a;border-color:rgba(0,135,90,0.25)}
-[data-theme="light"] .badge-L{background:rgba(192,57,43,0.1);color:#c0392b;border-color:rgba(192,57,43,0.25)}
-[data-theme="light"] .badge-ativa{background:rgba(180,83,9,0.1);color:#b45309;border-color:rgba(180,83,9,0.25)}
-[data-theme="light"] .status-pill.ok{background:rgba(0,135,90,0.1);color:#00875a;border-color:rgba(0,135,90,0.2)}
-[data-theme="light"] .status-pill.err{background:rgba(192,57,43,0.1);color:#c0392b;border-color:rgba(192,57,43,0.2)}
-[data-theme="light"] .status-pill.loading{background:rgba(21,101,192,0.1);color:#1565c0;border-color:rgba(21,101,192,0.2)}
-[data-theme="light"] .sync-btn{background:#1565c0}
-[data-theme="light"] .sync-btn:hover{box-shadow:0 0 20px rgba(21,101,192,0.3)}
-[data-theme="light"] .btn-primary{background:#1565c0;border-color:#1565c0}
+[data-theme="light"] .badge-W{background:rgba(43,192,126,0.1);color:#2BC07E;border-color:rgba(43,192,126,0.25)}
+[data-theme="light"] .badge-L{background:rgba(229,82,75,0.1);color:#E5524B;border-color:rgba(229,82,75,0.25)}
+[data-theme="light"] .badge-ativa{background:rgba(224,162,26,0.1);color:#E0A21A;border-color:rgba(224,162,26,0.25)}
+[data-theme="light"] .status-pill.ok{background:rgba(43,192,126,0.1);color:#2BC07E;border-color:rgba(43,192,126,0.2)}
+[data-theme="light"] .status-pill.err{background:rgba(229,82,75,0.1);color:#E5524B;border-color:rgba(229,82,75,0.2)}
+[data-theme="light"] .status-pill.loading{background:rgba(30,124,240,0.1);color:#1E7CF0;border-color:rgba(30,124,240,0.2)}
+[data-theme="light"] .sync-btn{background:#1E7CF0}
+[data-theme="light"] .sync-btn:hover{box-shadow:0 0 20px rgba(30,124,240,0.3)}
+[data-theme="light"] .btn-primary{background:#1E7CF0;border-color:#1E7CF0}
 [data-theme="light"] .wallet-input{background:#fff;border-color:rgba(0,0,0,0.18);color:#0f0f18}
-[data-theme="light"] .wallet-input:focus{border-color:#1565c0;box-shadow:0 0 0 3px rgba(21,101,192,0.12)}
+[data-theme="light"] .wallet-input:focus{border-color:#1E7CF0;box-shadow:0 0 0 3px rgba(30,124,240,0.12)}
 [data-theme="light"] .page-title{color:#0f0f18}
 [data-theme="light"] .tipster-card{background:#fff;border-color:rgba(0,0,0,0.08)}
 [data-theme="light"] .tipster-name{color:#0f0f18}
@@ -930,9 +954,9 @@ function dateBadge(endDateStr) {
 
   let pill, pillStyle;
   if (diffDays < 0)      { pill = 'enc.';    pillStyle = 'color:var(--text3);background:var(--bg5)'; }
-  else if (diffDays===0) { pill = 'hoje';    pillStyle = 'color:#000;background:var(--red)'; }
-  else if (diffDays===1) { pill = 'amanhã';  pillStyle = 'color:#000;background:var(--amber)'; }
-  else if (diffDays<=3)  { pill = diffDays+'d'; pillStyle = 'color:#000;background:var(--amber)'; }
+  else if (diffDays===0) { pill = 'hoje';    pillStyle = 'color:#fff;background:var(--red)'; }
+  else if (diffDays===1) { pill = 'amanhã';  pillStyle = 'color:#fff;background:var(--amber)'; }
+  else if (diffDays<=3)  { pill = diffDays+'d'; pillStyle = 'color:#fff;background:var(--amber)'; }
   else if (diffDays<=7)  { pill = diffDays+'d'; pillStyle = 'color:var(--blue);background:rgba(46,139,255,.15)'; }
   else                   { pill = diffDays+'d'; pillStyle = 'color:var(--text3);background:var(--bg4)'; }
 
@@ -1933,7 +1957,7 @@ function renderResDonut(rows) {
   if (!Object.keys(tipMap).length) return;
   const ents  = Object.entries(tipMap).sort((a,b)=>b[1]-a[1]);
   const total = ents.reduce((s,[,v])=>s+v,0);
-  const COLORS= ['#2BC07E','#2E8BFF','#E0A21A','#7FB2FF','#34d399','#f87171','#34d399','#fbbf24','#60a5fa','#AEB7C2'];
+  const COLORS= ['#2BC07E','#2E8BFF','#E0A21A','#7FB2FF','#E5524B','#AEB7C2'];
   const isDark= document.documentElement.dataset.theme==='dark';
   chartDonut = new Chart(canvas, {
     type:'doughnut',
@@ -1951,7 +1975,7 @@ function renderResDonut(rows) {
 //  TIPSTERS ANALYSIS
 // ═══════════════════════════════════════════════════
 function tipsterColor(name) {
-  const colors=['#2BC07E','#2E8BFF','#E0A21A','#7FB2FF','#E5524B','#34d399','#ffd700','#ff6b6b','#4ecdc4','#AEB7C2','#fb923c','#34d399'];
+  const colors=['#2BC07E','#2E8BFF','#E0A21A','#7FB2FF','#E5524B','#AEB7C2'];
   let h=0; for(let i=0;i<name.length;i++) h=(h*31+name.charCodeAt(i))&0xffffffff;
   return colors[Math.abs(h)%colors.length];
 }
