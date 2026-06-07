@@ -872,7 +872,7 @@ async function getCotacao(ds) {
   if (c[ds]) return c[ds];
   try {
     const [d,m,y] = ds.split('/');
-    const r = await fetch(`https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoDolarDia(dataCotacao=@dataCotacao)?@dataCotacao='${m}-${d}-${y}'&$top=1&$format=json`);
+    const r = await fetch(`/api/bcb/olinda/servico/PTAX/versao/v1/odata/CotacaoDolarDia(dataCotacao=@dataCotacao)?@dataCotacao='${m}-${d}-${y}'&$top=1&$format=json`);
     const j = await r.json();
     const v = j?.value?.[0]?.cotacaoVenda;
     if (v) { c[ds] = v; localStorage.setItem(BCB_KEY, JSON.stringify(c)); return v; }
@@ -895,12 +895,7 @@ async function getDolarHoje() {
 // ═══════════════════════════════════════════════════
 const PUSD   = '0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB';
 const USDC_E = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
-const RPCS   = [
-  'https://polygon-bor-rpc.publicnode.com',
-  'https://polygon.llamarpc.com',
-  'https://rpc.ankr.com/polygon',
-  'https://polygon.drpc.org',
-];
+const RPCS = ['/api/polygon'];
 
 async function rpcBalance(token, wallet) {
   const data = '0x70a08231' + wallet.replace('0x','').toLowerCase().padStart(64,'0');
@@ -932,7 +927,7 @@ async function fetchCash(walletAddr) {
 
 async function fetchPortfolio(walletAddr) {
   try {
-    const r = await fetch('https://data-api.polymarket.com/value?user='+walletAddr);
+    const r = await fetch('/api/poly/value?user='+walletAddr);
     if (!r.ok) return 0;
     const data = await r.json();
     if (Array.isArray(data) && data.length>0) return parseFloat(data[0].value||0);
@@ -1104,7 +1099,7 @@ async function buscar() {
   btn.innerHTML = '<span>↻</span> Sincronizando...';
   setStatus('buscando...','loading');
   try {
-    const B = 'https://data-api.polymarket.com';
+    const B = '/api/poly';
     const [rPos, rAct] = await Promise.all([
       fetch(`${B}/positions?user=${w}&sizeThreshold=.1&limit=100`),
       fetch(`${B}/activity?user=${w}&limit=500`)
@@ -2068,7 +2063,7 @@ async function runExtractor(casa, inputType, textVal, images, manualDate='') {
   let messages;
   if (inputType==='text') { messages=[{role:'user',content:userText}]; }
   else { const cp=images.map(b=>({type:'image',source:{type:'base64',media_type:b.mime||'image/png',data:b.data}})); cp.push({type:'text',text:userText}); messages=[{role:'user',content:cp}]; }
-  const resp = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:inputType==='image'?'claude-opus-4-5':'claude-sonnet-4-5',max_tokens:4000,system:sysPrompt,messages})});
+  const resp = await fetch('/api/anthropic/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:inputType==='image'?'claude-opus-4-5':'claude-sonnet-4-5',max_tokens:4000,system:sysPrompt,messages})});
   const data = await resp.json();
   if (data.error) throw new Error(data.error.message);
   return data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
