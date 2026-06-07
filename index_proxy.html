@@ -947,6 +947,9 @@ function splitMultiBuys(fechados, activity) {
         _splitTotal:     matchBuys.length,
         _buyTimestamp:   parseInt(buy.timestamp || 0),
         initialValue:    thisStake,
+        currentValue:    totalStakeCalc > 0
+          ? parseFloat(pos.currentValue || 0) * (thisStake / totalStakeCalc)
+          : 0,
         avgPrice:        price,        // individual buy price → correct individual odd
         cashPnl:         adjustedPnl,
         conditionId:     cid,
@@ -1010,6 +1013,7 @@ async function buscar() {
     dadosFechados = reconciliarRedeems(dadosFechados, activity, activeCids);
     // Split positions with multiple BUY transactions into individual entries
     dadosFechados = splitMultiBuys(dadosFechados, activity);
+    dadosAtivos   = splitMultiBuys(dadosAtivos,   activity);
 
     // Sort fechados by date for initial order insertion
     const sortedForOrder = [...dadosFechados].sort((a,b) => {
@@ -1150,7 +1154,10 @@ function renderAtivasTable() {
       const sel = assign[cid]||'';
       const opts = buildTipsterOpts(tipsters, sel);
       const tipSel = `<select onchange="assignTipster(this,'${cid}')" class="${sel?'':'needs-tipster'}" style="background:var(--bg4);border:1px solid ${sel?'var(--border2)':'var(--amber)'};border-radius:4px;padding:3px 6px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer">${opts}</select>`;
-      return `<tr><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,60)}</td><td>${dateBadge(p.endDate)}</td><td>${tipSel}</td><td><span class="badge badge-ativa">ativa</span></td><td class="mono">${fu(ini)}</td><td class="mono ${pct>=0?'green':'red'}">${pct>=0?'+':''}${pct.toFixed(1)}%</td><td class="mono">${fu(cur)}</td></tr>`;
+      const splitBadge = p._splitTotal > 1
+        ? `<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(46,139,255,.15);color:var(--blue);font-family:'JetBrains Mono',monospace;margin-left:5px">${p._splitIndex+1}/${p._splitTotal}</span>`
+        : '';
+      return `<tr><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,60)}${splitBadge}</td><td>${dateBadge(p.endDate)}</td><td>${tipSel}</td><td><span class="badge badge-ativa">ativa</span></td><td class="mono">${fu(ini)}</td><td class="mono ${pct>=0?'green':'red'}">${pct>=0?'+':''}${pct.toFixed(1)}%</td><td class="mono">${fu(cur)}</td></tr>`;
     }).join('')
   );
 }
