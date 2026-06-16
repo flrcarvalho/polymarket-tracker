@@ -94,6 +94,9 @@ _archive/               → backups não versionados (.gitignore com *)
 - `renderAtivasTable` exibe badge X/Y idêntico ao das encerradas e coluna **Odd**
 - Cada split de ativa tem `_splitId` único → tipster dropdown independente
 - Posições de compra única: `avgPrice` é ancurado ao `price` da atividade BUY (fix 2026-06-16)
+- `splitMultiBuys(positions, activity, isClosed)` — parâmetro `isClosed` adicionado (fix 2026-06-16)
+  - Ativas (`isClosed=false`): `cashPnl` zerado (single-buy) ou `isWin=false` (multi-buy) → `calcOdd` usa `1/avgPrice`
+  - Fechadas (`isClosed=true`): comportamento original preservado
 
 ### Paleta de gráficos (corrigida 2026-06-07)
 - Barras diárias: `rgba(43,192,126,.65)` (pos) / `rgba(229,82,75,.65)` (neg) = `#2BC07E` / `#E5524B` com 65% opacidade

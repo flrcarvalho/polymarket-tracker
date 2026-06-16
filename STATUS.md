@@ -1,19 +1,23 @@
 # STATUS — Polymarket Dashboard
 
 ## Ultimo commit
-`5867513` — 2026-06-16
+`58fa3b6` — 2026-06-16
 
-## O que foi feito nesta sessao
-- Coluna **ODD** adicionada na tabela de Posicoes Ativas do Dashboard (estava ausente).
-- Grid quadriculado FDC aplicado (`body::before`, 44px, `--line-2`, opacity 0.55), igual ao Betting Dashboard.
-- Fix em `splitMultiBuys`: posicoes de compra unica agora ancuram `avgPrice` ao preco real da atividade BUY, evitando que o calculo de ODD use o preco de mercado atual como fallback.
+## O que foi feito (sessao 2026-06-16)
+- Coluna **ODD** adicionada na tabela de Posicoes Ativas do Dashboard.
+- Grid quadriculado FDC aplicado (`body::before`, 44px, `--line-2`, opacity 0.55).
+- Fix `splitMultiBuys`: posicoes single-buy ancuram `avgPrice` ao preco da atividade BUY.
+- Fix `calcOdd` para posicoes ativas (hold to end):
+  - `splitMultiBuys` recebe parametro `isClosed` (bool).
+  - Ativas: `cashPnl` zerado (single-buy) ou `isWin = false` (multi-buy).
+  - Resultado: ODD usa `1/avgPrice` fixo, nao oscila com o mercado.
 
 ## Pendente
-- Verificar visualmente o grid e a coluna ODD no browser apos push/deploy.
-- Avaliar se o calculo de ODD para posicoes ativas (sem atividade disponivel) esta correto em producao.
+- Verificar visualmente no browser apos deploy.
+- Confirmar que ODD das ativas bate com o preco de entrada real.
 
 ## Proximo passo
-Rodar o servidor local (`node server/server.js`), abrir o dashboard e confirmar:
+Rodar `node server/server.js`, carregar dados reais e checar:
 1. Grid aparece no fundo.
-2. Coluna ODD visivel na tabela de Posicoes Ativas.
-3. Valores de ODD das ativas batem com os precos de compra esperados.
+2. Coluna ODD nas Posicoes Ativas mostra valores fixos (nao mudam ao recarregar).
+3. ODD de ativos coerente com o preco de compra na atividade.
