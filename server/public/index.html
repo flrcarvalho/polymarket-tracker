@@ -43,7 +43,8 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;font-size:15px}
-.app{display:flex;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(var(--line-2) 1px,transparent 1px),linear-gradient(90deg,var(--line-2) 1px,transparent 1px);background-size:44px 44px;opacity:.55}
+.app{display:flex;min-height:100vh;position:relative;z-index:1}
 .sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;overflow-y:auto}
 .sidebar-logo{border-bottom:1px solid var(--border);background:transparent;overflow:hidden;padding:.5rem .75rem}
 .sidebar-logo img{width:100%;height:auto;display:block;object-fit:contain}
@@ -917,6 +918,11 @@ function splitMultiBuys(fechados, activity) {
       // Single buy or no activity match — no split needed
       pos._splitId = cid;
       pos._splitTotal = 1;
+      // Anchor avgPrice to the actual buy price from activity (more reliable than positions API)
+      if (matchBuys.length === 1) {
+        const bp = parseFloat(matchBuys[0].price || 0);
+        if (bp > 0 && bp < 1) pos.avgPrice = bp;
+      }
       result.push(pos);
       return;
     }
@@ -1146,7 +1152,7 @@ function renderAtivasTable() {
   const assign   = getAssign();
   const tipsters = getTipsters();
   el.innerHTML = tw(
-    '<tr><th>Mercado</th><th>Data do evento</th><th>Tipster</th><th>Status</th><th>Stake USD</th><th>P&L %</th><th>Valor atual</th></tr>',
+    '<tr><th>Mercado</th><th>Data do evento</th><th>Tipster</th><th>Status</th><th>Stake USD</th><th>P&L %</th><th>Valor atual</th><th>Odd</th></tr>',
     dadosAtivos.map(p => {
       const cur = parseFloat(p.currentValue||0), ini = parseFloat(p.initialValue||0);
       const pct = ini>0 ? (cur-ini)/ini*100 : 0;
@@ -1157,7 +1163,7 @@ function renderAtivasTable() {
       const splitBadge = p._splitTotal > 1
         ? `<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(46,139,255,.15);color:var(--blue);font-family:'JetBrains Mono',monospace;margin-left:5px">${p._splitIndex+1}/${p._splitTotal}</span>`
         : '';
-      return `<tr><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,60)}${splitBadge}</td><td>${dateBadge(p.endDate)}</td><td>${tipSel}</td><td><span class="badge badge-ativa">ativa</span></td><td class="mono">${fu(ini)}</td><td class="mono ${pct>=0?'green':'red'}">${pct>=0?'+':''}${pct.toFixed(1)}%</td><td class="mono">${fu(cur)}</td></tr>`;
+      return `<tr><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.title||'').substring(0,60)}${splitBadge}</td><td>${dateBadge(p.endDate)}</td><td>${tipSel}</td><td><span class="badge badge-ativa">ativa</span></td><td class="mono">${fu(ini)}</td><td class="mono ${pct>=0?'green':'red'}">${pct>=0?'+':''}${pct.toFixed(1)}%</td><td class="mono">${fu(cur)}</td><td class="mono amber">${nf(calcOdd(p),4)}</td></tr>`;
     }).join('')
   );
 }
