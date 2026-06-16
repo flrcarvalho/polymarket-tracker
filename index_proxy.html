@@ -881,7 +881,7 @@ function reconciliarRedeems(fechados, activity, activeCids) {
 //  When same outcome was bought multiple times, expand
 //  into individual entries (one per BUY transaction)
 // ═══════════════════════════════════════════════════
-function splitMultiBuys(fechados, activity) {
+function splitMultiBuys(fechados, activity, isClosed = false) {
   if (!Array.isArray(activity) || !activity.length) {
     // No activity: just assign _splitId = conditionId
     fechados.forEach(p => { p._splitId = p._splitId || p.conditionId || ''; });
@@ -923,6 +923,9 @@ function splitMultiBuys(fechados, activity) {
         const bp = parseFloat(matchBuys[0].price || 0);
         if (bp > 0 && bp < 1) pos.avgPrice = bp;
       }
+      // Para posições ativas: cashPnl é P&L não realizado (mark-to-market).
+      // Zeramos para forçar calcOdd a usar 1/avgPrice (ODD real de compra).
+      if (!isClosed) pos.cashPnl = 0;
       result.push(pos);
       return;
     }
@@ -943,9 +946,9 @@ function splitMultiBuys(fechados, activity) {
         ? shares - thisStake          // = shares*(1-price) = stake*(1/price - 1)
         : totalPnl / matchBuys.length; // fallback if no price
 
-      // Adjust pnl sign: if position was a LOSS, flip to negative proportionally
-      const isWin = parseFloat(pos.cashPnl || 0) > 0;
-      const adjustedPnl = isWin ? thisPnl : -thisStake; // loss = lose your stake
+      // Para fechadas: isWin pelo cashPnl realizado. Para ativas: sempre false (cashPnl é unrealizado).
+      const isWin = isClosed && parseFloat(pos.cashPnl || 0) > 0;
+      const adjustedPnl = isWin ? thisPnl : -thisStake; // loss/ativa = perde o stake
 
       const split = Object.assign({}, pos, {
         _splitId:        cid + '__' + i,
@@ -1018,8 +1021,8 @@ async function buscar() {
     const activeCids = new Set(allPos.map(p => p.conditionId).filter(Boolean));
     dadosFechados = reconciliarRedeems(dadosFechados, activity, activeCids);
     // Split positions with multiple BUY transactions into individual entries
-    dadosFechados = splitMultiBuys(dadosFechados, activity);
-    dadosAtivos   = splitMultiBuys(dadosAtivos,   activity);
+    dadosFechados = splitMultiBuys(dadosFechados, activity, true);   // resolvidas
+    dadosAtivos   = splitMultiBuys(dadosAtivos,   activity, false);  // abertas
 
     // Sort fechados by date for initial order insertion
     const sortedForOrder = [...dadosFechados].sort((a,b) => {
