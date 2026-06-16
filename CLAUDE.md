@@ -84,11 +84,16 @@ _archive/               → backups não versionados (.gitignore com *)
 - `showPage()` limpa `topbarSub` ao sair do Dashboard
 - O `.page-header` do Dashboard foi **removido** — KPIs começam direto após o topbar
 
+### Grid de fundo (2026-06-16)
+- `body::before` com `linear-gradient(--line-2)`, `background-size: 44px 44px`, `opacity: .55`
+- `.app` tem `position: relative; z-index: 1` para ficar acima do grid
+
 ### Split de posições ativas (2026-06-07)
 - `splitMultiBuys(pos, activity)` agora chamada para `dadosAtivos` E `dadosFechados`
 - Para ativos: `currentValue` distribuído proporcionalmente ao stake de cada compra
-- `renderAtivasTable` exibe badge X/Y idêntico ao das encerradas
+- `renderAtivasTable` exibe badge X/Y idêntico ao das encerradas e coluna **Odd**
 - Cada split de ativa tem `_splitId` único → tipster dropdown independente
+- Posições de compra única: `avgPrice` é ancurado ao `price` da atividade BUY (fix 2026-06-16)
 
 ### Paleta de gráficos (corrigida 2026-06-07)
 - Barras diárias: `rgba(43,192,126,.65)` (pos) / `rgba(229,82,75,.65)` (neg) = `#2BC07E` / `#E5524B` com 65% opacidade
