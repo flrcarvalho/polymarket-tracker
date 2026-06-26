@@ -994,6 +994,21 @@ async function buscar() {
     let [allPos, act1] = await Promise.all([rPos.json(), rAct.ok ? rAct.json() : []]);
     allPos = Array.isArray(allPos) ? allPos : [];
 
+    // Paginate positions (a API ordena resolvidas/redeemable primeiro;
+    // posições ativas podem ficar além das 100 primeiras → paginar até esgotar)
+    if (allPos.length === 100) {
+      for (let off = 100; off <= 1000; off += 100) {
+        try {
+          const rp = await fetch(`${B}/positions?user=${w}&sizeThreshold=.1&limit=100&offset=${off}`);
+          if (!rp.ok) break;
+          const pg = await rp.json();
+          if (!Array.isArray(pg) || !pg.length) break;
+          allPos = [...allPos, ...pg];
+          if (pg.length < 100) break;
+        } catch(e) { break; }
+      }
+    }
+
     // Paginate activity
     let activity = Array.isArray(act1) ? [...act1] : [];
     if (activity.length === 500) {
