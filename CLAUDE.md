@@ -113,4 +113,5 @@ _archive/               → backups não versionados (.gitignore com *)
 - ⚠️ **ARMADILHA RAILWAY**: se não houver `index.html` na raiz do repo, o Railpack perde a auto-detecção de estático e falha. Sempre garantir que Railway → Settings → Source → Root Directory = `server/`.
 - Ao sincronizar `index_proxy.html` → `server/public/index.html`, basta copiar: ambos usam os mesmos paths relativos `/api/*`.
 - O proxy repassa os headers `x-api-key`, `anthropic-version` e `anthropic-beta` para a Anthropic API.
+- ⚠️ **PAGINAR `/positions`**: a API ordena resolvidas/`redeemable` primeiro. Com só `limit=100`, posições ativas ficam na pagina 2 e somem do dash. O `syncBtn` pagina `offset=100,200...` ate esgotar (fix 2026-06-26). `/activity` tambem e paginado (offset 500,1000...).
 - CORS está aberto (`*`) — não expor chaves de API no frontend em produção.

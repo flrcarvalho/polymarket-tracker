@@ -1,23 +1,22 @@
 # STATUS — Polymarket Dashboard
 
 ## Ultimo commit
-`58fa3b6` — 2026-06-16
+`cd2ede3` — 2026-06-26
 
-## O que foi feito (sessao 2026-06-16)
-- Coluna **ODD** adicionada na tabela de Posicoes Ativas do Dashboard.
-- Grid quadriculado FDC aplicado (`body::before`, 44px, `--line-2`, opacity 0.55).
-- Fix `splitMultiBuys`: posicoes single-buy ancuram `avgPrice` ao preco da atividade BUY.
-- Fix `calcOdd` para posicoes ativas (hold to end):
-  - `splitMultiBuys` recebe parametro `isClosed` (bool).
-  - Ativas: `cashPnl` zerado (single-buy) ou `isWin = false` (multi-buy).
-  - Resultado: ODD usa `1/avgPrice` fixo, nao oscila com o mercado.
+## O que foi feito (sessao 2026-06-26)
+- Fix: paginacao do endpoint `/positions`.
+  - Bug: dash mostrava 0 posicoes ativas.
+  - Causa: a API `/positions` ordena resolvidas/redeemable primeiro. Com `limit=100`
+    as 100 primeiras eram todas fechadas e as ativas ficavam na pagina 2 (offset 100+),
+    que o codigo nunca buscava.
+  - Correcao: loop de paginacao `offset=100,200...` ate esgotar, igual ja era feito
+    com `/activity`. Aplicado em `index_proxy.html` e `server/public/index.html`.
+  - Validado com a carteira `0x2b3c...9f22`: 107 posicoes no total, 6 ativas detectadas.
 
 ## Pendente
-- Verificar visualmente no browser apos deploy.
-- Confirmar que ODD das ativas bate com o preco de entrada real.
+- Verificar visualmente no browser apos deploy: confirmar que as 6 ativas aparecem.
 
 ## Proximo passo
-Rodar `node server/server.js`, carregar dados reais e checar:
-1. Grid aparece no fundo.
-2. Coluna ODD nas Posicoes Ativas mostra valores fixos (nao mudam ao recarregar).
-3. ODD de ativos coerente com o preco de compra na atividade.
+Rodar `node server/server.js`, sincronizar a carteira e checar:
+1. Posicoes Ativas listam as 6 entradas (UFC, O/U 2.5 Rounds, Senegal, Belgium, Norway, New Zealand).
+2. KPIs de ativas (count e valor) batem com os dados reais.
